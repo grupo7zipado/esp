@@ -18,7 +18,7 @@
     VARIÁVEIS DE SETUP
 */
 
-/*
+/* [Conexões Externas]
 // --- WiFi --- //
 const char* ssid = ;
 const char* password = ;
@@ -29,17 +29,20 @@ const int mqtt_port = ;
 const char* mqtt_topic = ;
 
 WiFiClient espClient;
-PubSubClient client(espClient); */
+PubSubClient client(espClient); 
+*/
+
+   [Conexões Internas]
+// --- Interface I2C --- //
+TwoWire I2C_0 = TwoWire(0); // Barramento I2C 0
+TwoWire I2C_1 = TwoWire(1); // Barramento I2C 1
 
 // --- Sensores e dados --- //
 MAX30105 particleSensor;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 Adafruit_SSD1306 display(128, 64, &I2C_0, -1);
 
-// --- Interface I2C --- //
-TwoWire I2C_0 = TwoWire(0); // Barramento I2C 0
-TwoWire I2C_1 = TwoWire(1); // Barramento I2C 1
-
+/*
 // --- Variáveis para cálculos --- //
 double avered = 0;
 double aveir = 0;
@@ -65,6 +68,7 @@ float beatsPerMinute;
 int beatAvg;
 
 #define USEFIFO
+*/
 
 /*
     FUNÇÕES DE SETUP
@@ -90,7 +94,7 @@ void confMAX30102() {
   int adcRange = 16384; // faixa de leitura adc
 
  
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //define os valores de variáveis do hardware do MAX30102
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
 }
 
 void initSensors() {
