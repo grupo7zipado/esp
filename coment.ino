@@ -85,7 +85,17 @@ int beatAvg;
 /*
     VOID SETUP
 */
-
+void setup() {
+Serial.begin(115200);
+Wire.begin();
+    I2C_0.begin(8, 9); //I2C0
+    I2C_1.begin(6, 7); //I2C1
+particleSensor.begin(Wire, I2C_SPEED_STANDARD); //inicia sensor MAX30102
+particleSensor.setup(); //configura o sensor
+mlx.begin(); //inicia o sensor MLX90614
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //inicia o display
+  display.clearDisplay();
+  display.display();
 
 /*
     VOID LOOP
@@ -101,7 +111,7 @@ int beatAvg;
 // codigo para otimizar
 ----------------------------------------------------------
 
-[22:17, 5/6/2025] Mid: #include <Wire.h> +
+/*[22:17, 5/6/2025] Mid: #include <Wire.h> +
 #include <Adafruit_MLX90614.h> +
 
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
@@ -109,7 +119,7 @@ Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 void setup() {
   Serial.begin(9600);
   mlx.begin();
-}
+}*/
 
 void loop() {
   double temp = mlx.readObjectTempC();
@@ -193,7 +203,7 @@ int beatAvg;
 #define USEFIFO
 
 
-//Void setup
+/*Void setup
 void setup() {
  Serial.begin(115200);
  Wire.begin();
@@ -211,7 +221,7 @@ mlx.begin(); //Inicia sensor mlx90614
 display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //inicia o display
   display.clearDisplay();
   display.display();
-}
+}*/
 
 void MAX30102() {
 // Configuração do sensor
