@@ -32,10 +32,9 @@ WiFiClient espClient;
 PubSubClient client(espClient); */
 
 // --- Sensores e dados --- //
-//ESP32Time rtc;
 MAX30105 particleSensor;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
+Adafruit_SSD1306 display(128, 64, &I2C_0, -1);
 
 // --- Interface I2C --- //
 TwoWire I2C_0 = TwoWire(0); // Barramento I2C 0
@@ -70,7 +69,37 @@ int beatAvg;
 /*
     FUNÇÕES DE SETUP
 */
+void initI2C() {
+    I2C_0.begin(8, 9); //I2C 0 para o MAX30102 e Display Oled
+    I2C_1.begin(6, 7); //I2C 1 para o MLX90614
+}
 
+void initDisplay() {
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //inicia o display
+  display.clearDisplay();
+  display.display();
+}
+
+void confMAX30102() {
+// variáveis de hardware do sensor
+  byte ledBrightness = 0x7F; //intensidade do led
+  byte sampleAverage = 4; //amostras para média 
+  byte ledMode = 2; //modo do led
+  int sampleRate = 200; //frequência de amostragem (Hz)
+  int pulseWidth = 411; //duração de pulso do led
+  int adcRange = 16384; // faixa de leitura adc
+
+ 
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange); //define os valores de variáveis do hardware do MAX30102
+}
+
+void initSensors() {
+particleSensor.begin(&I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
+//I2C_0.setClock(400000); //altere a velocidade entre 100/400 kHz
+confMAX30102();
+mlx.begin(&I2C_1); //inicia o sensor MLX90614
+
+}
 
 /*
     FUNÇÕES DE LEITURA
@@ -86,16 +115,11 @@ int beatAvg;
     VOID SETUP
 */
 void setup() {
-Serial.begin(115200);
-Wire.begin();
-    I2C_0.begin(8, 9); //I2C0
-    I2C_1.begin(6, 7); //I2C1
-particleSensor.begin(Wire, I2C_SPEED_STANDARD); //inicia sensor MAX30102
-particleSensor.setup(); //configura o sensor
-mlx.begin(); //inicia o sensor MLX90614
-display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //inicia o display
-  display.clearDisplay();
-  display.display();
+Serial.begin(115200); //monitor serial
+initI2C(); //inicia o barramento I2C
+initDisplay(); //inicia o Display 
+initSensors(); //inicia os sensores
+}
 
 /*
     VOID LOOP
