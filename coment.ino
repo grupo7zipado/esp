@@ -32,12 +32,12 @@ WiFiClient espClient;
 PubSubClient client(espClient); 
 */
 
-   [Conexões Internas]
+//  [Conexões Internas]
 // --- Interface I2C --- //
 TwoWire I2C_0 = TwoWire(0); // Barramento I2C 0
 TwoWire I2C_1 = TwoWire(1); // Barramento I2C 1
 
-// --- Sensores e dados --- //
+// --- Sensores --- //
 MAX30105 particleSensor;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 Adafruit_SSD1306 display(128, 64, &I2C_0, -1);
@@ -151,7 +151,7 @@ void setup() {
 
 void loop() {
   double temp = mlx.readObjectTempC();
-  double ambientTemp = mlx.readAmbientTempC();
+ // double ambientTemp = mlx.readAmbientTempC();
   
   Serial.print("Temperatura do objeto: ");
   Serial.print(temp);
