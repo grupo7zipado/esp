@@ -61,16 +61,16 @@ const char* password = "R125redes";
     TÓPICO DE ENVIO
 */
 // const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
-const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
+const char* ip_broker = "192.168.0.2";  // Ou IP do seu broker local
 const int broker_port = 1883;
 const char* client_id = "esp32_00:14:22:01:23:45";
 const char* mqtt_topic_sub = "/use_id";   // Tópico para inscrição
 const char* mqtt_topic_pub = "/dados_tipo";   // enviar dados
 const char* first_conect =  "/request_user";   // Tópico para publicação
 
-
-
-
+String mac_address;
+String user;
+bool pedio = false;
 /*
     FUNÇÕES DE SETUP
 */
@@ -153,7 +153,6 @@ void reconnect_mqtt() {
 
 
 void setup() {
-
     Serial.begin(115200);
     setup_wifi();
 
@@ -161,10 +160,14 @@ void setup() {
     mqttClient.setCallback(mqttCallback);
     // Abrir namespace "config" no modo leitura/escrita
     prefs.begin("config", false);
-
+    // temporario para testes
+    prefs.remove("user");
     // Ver se já existe valor salvo
-    String user = prefs.getString("user", "");
+    user = prefs.getString("user", "");
+    mac_address = WiFi.macAddress();
+
     Serial.println("Usuário atual: " + user);
+    Serial.println("Mac: " + mac_address);
 }
 
 /*
@@ -178,13 +181,21 @@ void loop() {
       reconnect_mqtt();
     }
     mqttClient.loop();
-     
-    if (mqttClient.publish(first_conect, "qualquer coisa")) {
-        Serial.println("primeira conexão");
-    } else {
-        Serial.println("erro na primeira conexao");
+    if(pedio){
+      Serial.println("ja pedio o usuário");
+    }else{
+      if( user.length()> 0 ){
+        Serial.println("ja tem usuario");
+      }else{
+        String conection = mac_address + first_conect;
+        if (mqttClient.publish(first_conect, mac_address.c_str())) {
+            Serial.println("primeira conexão");
+        } else {
+            Serial.println("erro na primeira conexao");
+        }
+        pedio = true;
+      }
     }
-
     //  if (mqttClient.publish(mqtt_topic_pub, temp)) {
     //  }
     delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
