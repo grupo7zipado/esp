@@ -3,8 +3,7 @@
 */
 #include <Wire.h> //configuração de I2C
 #include <WiFi.h> //biblioteca WiFi
-#include <NTPClient.h> //data e hora
-#include <driver/adc.h> //nível de bateria
+#include <time.h> //data e hora
 #include "MAX30105.h" //sensor BPM/Oxigenação
 #include "heartRate.h" //processamento de BPM?Oxigenação
 #include <Adafruit_MLX90614.h> //sensor de temperatura
@@ -20,13 +19,13 @@
 
 /* [Conexões Externas]
 // --- WiFi --- //
-const char* ssid = ;
-const char* password = ;
+const char* ssid = "";
+const char* password = "";
 
 // --- MQTT --- //
-const char* mqtt_server = ;
+const char* mqtt_server = "";
 const int mqtt_port = ;
-const char* mqtt_topic = ;
+const char* mqtt_topic = "";
 
 WiFiClient espClient;
 PubSubClient client(espClient); 
@@ -34,16 +33,16 @@ PubSubClient client(espClient);
 
 //  [Conexões Internas]
 // --- Interface I2C --- //
-TwoWire I2C_0 = TwoWire(0); // Barramento I2C 0
-TwoWire I2C_1 = TwoWire(1); // Barramento I2C 1
+TwoWire I2C_0 = TwoWire(0);
+TwoWire I2C_1 = TwoWire(1);
 
-// --- Sensores --- //
+// --- Sensores e display --- //
 MAX30105 particleSensor;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 Adafruit_SSD1306 display(128, 64, &I2C_0, -1);
 
-/*
-// --- Variáveis para cálculos --- //
+
+// --- Variáveis para cálculos spO2 e BPM --- //
 double avered = 0;
 double aveir = 0;
 double sumirrms = 0;
@@ -66,13 +65,16 @@ byte rateSpot = 0;
 long lastBeat = 0; // Hora em que ocorreu o último batimento
 float beatsPerMinute;
 int beatAvg;
+double spo2 = 0.0;
+double temp = 0.0;
 
 #define USEFIFO
-*/
+
 
 /*
     FUNÇÕES DE SETUP
 */
+
 void initI2C() {
     I2C_0.begin(8, 9); //I2C 0 para o MAX30102 e Display Oled
     I2C_1.begin(6, 7); //I2C 1 para o MLX90614
@@ -88,20 +90,20 @@ void confMAX30102() {
 // variáveis de hardware do sensor
   byte ledBrightness = 0x7F; //intensidade do led
   byte sampleAverage = 4; //amostras para média 
-  byte ledMode = 2; //modo do led
+  byte ledMode = 3; //modo do led
   int sampleRate = 200; //frequência de amostragem (Hz)
   int pulseWidth = 411; //duração de pulso do led
   int adcRange = 16384; // faixa de leitura adc
 
- 
+
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
 }
 
 void initSensors() {
-particleSensor.begin(&I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
+particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
 //I2C_0.setClock(400000); //altere a velocidade entre 100/400 kHz
 confMAX30102();
-mlx.begin(&I2C_1); //inicia o sensor MLX90614
+mlx.begin(0x5A, &I2C_1); //inicia o sensor MLX90614
 
 }
 
@@ -109,7 +111,91 @@ mlx.begin(&I2C_1); //inicia o sensor MLX90614
     FUNÇÕES DE LEITURA
 */
 
+void rMAX() {
+ uint32_t ir, red;
+ double fred, fir;
+ double SpO2 = 0; // SpO2 bruto
 
+#ifdef USEFIFO
+ particleSensor.check(); // Verifica o sensor, lê até 3 amostras
+
+ while (particleSensor.available()) {
+  red = particleSensor.getFIFORed();
+  ir = particleSensor.getFIFOIR();
+
+ //Cálculo de BPM
+  if (checkForBeat(ir)) {
+   long delta = millis() - lastBeat;
+   lastBeat = millis();
+   beatsPerMinute = 60 / (delta / 1000.0);
+
+   if (beatsPerMinute < 255 && beatsPerMinute > 20) {
+    rates[rateSpot++] = (byte)beatsPerMinute;
+    rateSpot %= RATE_SIZE;
+
+    beatAvg = 0;
+    for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
+    beatAvg /= RATE_SIZE;
+   }
+  }
+
+ //Cálculo de SpO2
+  i++;
+  fred = (double)red;
+  fir = (double)ir;
+
+  avered = avered * frate + red * (1.0 - frate);
+  aveir = aveir * frate + ir * (1.0 - frate);
+  sumredrms += (fred - avered) * (fred - avered);
+  sumirrms += (fir - aveir) * (fir - aveir);
+
+  if ((i % SAMPLING) == 0 && millis() > TIMETOBOOT) {
+   if (ir < FINGER_ON) {
+    ESpO2 = MINIMUM_SPO2;
+   }
+  }
+
+  if ((i % Num) == 0) {
+   double R = (sqrt(sumredrms) / avered) / (sqrt(sumirrms) / aveir);
+   SpO2 = -23.3 * (R - 0.4) + 100;
+   ESpO2 = FSpO2 * ESpO2 + (1.0 - FSpO2) * SpO2;
+
+   sumredrms = 0.0;
+   sumirrms = 0.0;
+   i = 0;
+   break;
+  }
+
+  particleSensor.nextSample();
+ }
+#endif
+
+ spo2 = ESpO2;
+}
+
+
+void rMLX() {
+// --- MLX90614 --- //
+ temp = mlx.readObjectTempC(); //leitura da temperatura corporal
+}
+
+void displayOled() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.print("SpO2: ");
+  display.print(spo2, 1);
+  display.println(" %");
+    
+  display.print("BPM: ");
+  display.println(beatAvg, 1);
+
+  display.print("Temp: ");
+  display.print(temp, 1);
+  display.println(" C");
+  display.display();
+    }
 /*
     SISTEMA OPERACIONAL
 */
@@ -119,22 +205,28 @@ mlx.begin(&I2C_1); //inicia o sensor MLX90614
     VOID SETUP
 */
 void setup() {
-Serial.begin(115200); //monitor serial
-initI2C(); //inicia o barramento I2C
-initDisplay(); //inicia o Display 
-initSensors(); //inicia os sensores
+ Serial.begin(115200); //monitor serial
+ initI2C(); //inicia o barramento I2C
+ initDisplay(); //inicia o Display 
+ initSensors(); //inicia os sensores
 }
 
 /*
     VOID LOOP
 */
+void loop() {
+ rMAX();
+ rMLX();
+ displayOled();
+ //delay(2000);
+
+}
 
 
 
 
 
-
-
+/*
 // restante do codigo
 // codigo para otimizar
 ----------------------------------------------------------
@@ -318,3 +410,4 @@ void loop() {
 
 --------------------------------------------------------------------------
 segundo código batimento
+*/
