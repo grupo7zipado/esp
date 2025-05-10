@@ -126,7 +126,8 @@ void reconnect_mqtt() {
         Serial.print(" Conectando ao Broker MQTT...");
         if (mqttClient.connect(client_id)) {
             Serial.println(" Conectado!");
-            mqttClient.subscribe(mqtt_topic_sub);  // Inscreve-se no tópico
+            String topico = mac_address.c_str()+mqtt_topic_sub;
+            mqttClient.subscribe(topico);  // Inscreve-se no tópico
         } else {
             Serial.print(" Falha, código: ");
             Serial.print(mqttClient.state());
