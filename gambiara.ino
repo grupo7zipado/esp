@@ -82,7 +82,13 @@ WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 
 
-// Callback quando receber uma mensagem MQTT
+/*
+    mqttCallback
+    
+    função responsavel por receber todo mensagens enviadas aos topicos que o esp se inscreveu 
+
+*/
+
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
     // Serial.print(" Mensagem recebida no tópico: ");
     // Serial.println(topic);
