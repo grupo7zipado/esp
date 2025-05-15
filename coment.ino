@@ -111,7 +111,7 @@ mlx.begin(0x5A, &I2C_1); //inicia o sensor MLX90614
     FUNÇÕES DE LEITURA
 */
 
-void rMAX() {
+void readMAX() {
  uint32_t ir, red;
  double fred, fir;
  double SpO2 = 0; // SpO2 bruto
@@ -174,7 +174,7 @@ void rMAX() {
 }
 
 
-void rMLX() {
+void readMLX() {
 // --- MLX90614 --- //
  temp = mlx.readObjectTempC(); //leitura da temperatura corporal
 }
@@ -215,8 +215,8 @@ void setup() {
     VOID LOOP
 */
 void loop() {
- rMAX();
- rMLX();
+ readMAX();
+ readMLX();
  displayOled();
  //delay(2000);
 
