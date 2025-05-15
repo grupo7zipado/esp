@@ -43,11 +43,11 @@
     SSID
     SENHA
 */
-const char* ssid = "TP-Link_0486";
-const char* password = "46179951";
+// const char* ssid = "TP-Link_0486";
+// const char* password = "46179951";
 
-// const char* ssid = "777zip";
-// const char* password = "R125redes";
+const char* ssid = "777zip";
+const char* password = "R125redes";
 
 /*
     VARIÁVEIS CONEXÃO BROKER
@@ -60,8 +60,10 @@ const char* password = "46179951";
 /*
     Conexão broker MQTT
 */
+const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
+
 // const char* ip_broker = "192.168.0.2";  // Ou IP do seu broker local
-const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
+// const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
 const int broker_port = 1883;
 
 /*
@@ -135,7 +137,7 @@ PubSubClient mqttClient(espClient);
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
     //verifica se o tipico e o correto
-    if(strcmp(topic, topic_sub_response_user)){
+    if(strcmp(topic, topic_sub_response_user.c_str())){
         //joga o payload(usuario) dentro de uma variavel
         String novoUser;
         for (int i = 0; i < length; i++) {
@@ -149,7 +151,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
         Serial.println("Novo usuário salvo: " + novoUser);
     }else{
-        Serial.println("topico errado AaaaaaaaaaaaaaaaaaHH")
+        Serial.println("topico errado AaaaaaaaaaaaaaaaaaHH");
     }
     
 }
@@ -165,8 +167,7 @@ void reconnect_mqtt() {
         Serial.print(" Conectando ao Broker MQTT...");
         if (mqttClient.connect(client_id)) {
             Serial.println(" Conectado!");
-            String topico = mac_address.c_str()+mqtt_topic_sub;
-            mqttClient.subscribe(topico);  // Inscreve-se no tópico
+            mqttClient.subscribe(topic_sub_response_user.c_str());  // Inscreve-se no tópico
         } else {
             Serial.print(" Falha, código: ");
             Serial.print(mqttClient.state());
@@ -177,7 +178,14 @@ void reconnect_mqtt() {
 }
 
 
+void enviarPrimeiraMensagem() {
+    while (!mqttClient.publish(topic_pub_request_user.c_str(), mac_address.c_str())) {
+        Serial.println("Erro ao publicar. Tentando novamente em 3 segundos...");
+        delay(3000);
+    }
 
+    Serial.println("✅ Publicação bem-sucedida no tópico: " + topic_pub_request_user);
+}
 
 /*
     FUNÇÕES DE LEITURA
@@ -221,9 +229,13 @@ void setup() {
     topic_pub_bpm = mac_address + "/" + topic_pub_bpm;
     topic_pub_oxigenacao = mac_address + "/" + topic_pub_oxigenacao;
 
+    Serial.println("topic_pub_request_user: " + topic_pub_request_user);
+    Serial.println("topic_sub_response_user: " + topic_sub_response_user);
+    Serial.println("topic_pub_temperatura: " + topic_pub_temperatura);
+    Serial.println("topic_pub_bpm: " + topic_pub_bpm);
+    Serial.println("topic_pub_oxigenacao: " + topic_pub_oxigenacao);
 
 
-    
 }
 
 /*
@@ -233,21 +245,20 @@ void setup() {
 
 void loop() {
 
-    if (!mqttClient.connected()) {
-      reconnect_mqtt();
+      if (!mqttClient.connected()) {
+        reconnect_mqtt();  // sua função de reconexão
     }
+
     mqttClient.loop();
+
+    static bool primeiraMensagemEnviada = false;
+
+    if (!primeiraMensagemEnviada) {
+        enviarPrimeiraMensagem();
+        primeiraMensagemEnviada = true;
+    }
+
     
-    if( user.length()> 0 ){
-    Serial.println("ja tem usuario");
-    }else{
-    String conection = mac_address + first_conect;
-    if (mqttClient.publish(first_conect, mac_address.c_str())) {
-        Serial.println("primeira conexão");
-    } else {
-        Serial.println("erro na primeira conexao");
-    }
-    }
 
     delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
   
