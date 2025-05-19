@@ -136,18 +136,23 @@ PubSubClient mqttClient(espClient);
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
+
+    //LOGS TOPICO RECEBIDO
     Serial.print("Recebido topic: [");
     Serial.print(topic);
     Serial.println("]");
 
+    //LOGS TOPICO ESPERADO
     Serial.print("Esperado topic: [");
     Serial.print(topic_sub_response_user.c_str());
     Serial.println("]");
+    //MENSAGEM RECEBIDA
     Serial.print("Payload: ");
     for (unsigned int i = 0; i < length; i++) {
         Serial.print((char)payload[i]);  // converte byte para char
     }
     Serial.println();
+
     //verifica se o tipico e o correto
     if(strcmp(topic, topic_sub_response_user.c_str()) == 0){
         //joga o payload(usuario) dentro de uma variavel
@@ -179,6 +184,7 @@ void reconnect_mqtt() {
         Serial.print(" Conectando ao Broker MQTT...");
         if (mqttClient.connect(client_id)) {
             Serial.println(" Conectado!");
+            //SE INCREVE DO TOPICO PARA RECEBER NOVO ESPUSUARIO
             mqttClient.subscribe(topic_sub_response_user.c_str());  // Inscreve-se no tópico
         } else {
             Serial.print(" Falha, código: ");
@@ -189,7 +195,7 @@ void reconnect_mqtt() {
     }
 }
 
-
+//TESTE BLUBLICAÇÃO
 void enviarPrimeiraMensagem() {
     while (!mqttClient.publish(topic_pub_request_user.c_str(), mac_address.c_str())) {
         Serial.println("Erro ao publicar. Tentando novamente em 3 segundos...");
