@@ -53,11 +53,11 @@ PubSubClient mqttClient(espClient);
     SSID
     SENHA
 */
-const char* ssid = "TP-Link_0486";
-const char* password = "46179951";
+// const char* ssid = "TP-Link_0486";
+// const char* password = "46179951";
 
-// const char* ssid = "777zip";
-// const char* password = "R125redes";
+const char* ssid = "777zip";
+const char* password = "R125redes";
 
 /*
     VARIÁVEIS CONEXÃO BROKER
@@ -71,10 +71,10 @@ const char* password = "46179951";
     Conexão broker MQTT
 */
 
-// const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
+const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
 // const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
 // const char* ip_broker = "192.168.0.2";  // Ou IP do seu broker local
-const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
+// const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
 
 const int broker_port = 1883;
 
