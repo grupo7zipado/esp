@@ -25,12 +25,12 @@
 /*
     HORA EM TEMPO REAL
 */ 
-//#include <NTPClient.h>
+#include <NTPClient.h>
 
 /*
     JSON PARA ARDUINO/ESP
 */ 
-//#include <ArduinoJson.h>
+#include <ArduinoJson.h>
 
 
 
@@ -47,6 +47,10 @@ Preferences prefs;
 WiFiClient espClient;
 
 PubSubClient mqttClient(espClient);
+
+// Configuração do NTP
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil)
 
 /*
     VARIÁVEIS CONEXÃO WIFI
@@ -245,7 +249,8 @@ void setup() {
     mqttClient.setServer(ip_broker, broker_port);
     mqttClient.setCallback(mqttCallback);
 
-
+    timeClient.begin();
+    timeClient.update();
 
     /*
     
@@ -253,7 +258,7 @@ void setup() {
     // Abrir namespace "config" no modo leitura/escrita
     prefs.begin("config", false);
     // temporario para testes
-    prefs.remove("user");
+    //prefs.remove("user");
     // Ver se já existe valor salvo
     user = prefs.getString("user", "");
     mac_address = WiFi.macAddress();
@@ -285,7 +290,7 @@ void setup() {
 /*
     VOID LOOP
 */
-
+const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
 
 void loop() {
 
@@ -308,6 +313,36 @@ void loop() {
             primeiraMensagemEnviada = true;
         }
     } else {
+       for (int i = 0; i < 3; i++) {
+        std::string valor;
+
+        if (strcmp(tipos[i], "temperatura") == 0) {
+            valor = std::to_string(random(330, 370));
+        } else if (strcmp(tipos[i], "oxigenacao") == 0) {
+            valor = std::to_string(random(90, 100));
+        } else if (strcmp(tipos[i], "bpm") == 0) {
+            valor = std::to_string(random(60, 120));
+        }
+
+        StaticJsonDocument<200> doc;
+        doc["use_id"] = user;
+        doc["dados_tipo"] = tipos[i];
+        doc["dados_valor"] = valor;
+        doc["dados_generate"] = timeClient.getEpochTime();
+
+        String msg;
+        serializeJson(doc, msg);
+
+        String topicoaaa = mac_address+ "/" + tipos[i];
+        // 🚀 Verifica se a mensagem foi publicada com sucesso
+        if (mqttClient.publish(topicoaaa.c_str(), msg.c_str())) {
+          Serial.println("✅ Mensagem enviada: " + msg);
+        } else {
+          Serial.println("❌ ERRO ao enviar: " + msg);
+        }
+
+        delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
+      }
         Serial.println("Usuário salvo: " + user);
     }
     
