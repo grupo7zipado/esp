@@ -61,7 +61,7 @@ String user;
 //  [Conexões Internas]
 // --- Interface I2C --- //
 TwoWire I2C_0 = TwoWire(0);
-TwoWire I2C_1 = TwoWire(1);
+//TwoWire I2C_1 = TwoWire(1);
 
 // --- Sensores e display --- //
 MAX30105 particleSensor;
@@ -221,7 +221,7 @@ void initSensors() {
 particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
 //I2C_0.setClock(400000); //altere a velocidade entre 100/400 kHz
 confMAX30102();
-mlx.begin(0x5A, &I2C_1); //inicia o sensor MLX90614
+mlx.begin(0x5A, &I2C_0); //inicia o sensor MLX90614
 
 }
 
