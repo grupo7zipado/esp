@@ -3,15 +3,15 @@
 */
 #include <Wire.h> //configuração de I2C
 #include <WiFi.h> //biblioteca WiFi
-#include <Preferences.h> // manipulação de memoria
-#include <NTPClient.h> //Data e hora
+#include <Preferences.h> //manipulação de memoria
+#include <NTPClient.h> //data e hora
 #include "MAX30105.h" //sensor BPM/Oxigenação
 #include "heartRate.h" //processamento de BPM?Oxigenação
 #include <Adafruit_MLX90614.h> //sensor de temperatura
 #include <Adafruit_SSD1306.h> //controle do display
 #include <Adafruit_GFX.h> //biblioteca grafica do display
 #include <PubSubClient.h> //broker MQTT
-#include <ArduinoJson.h> // dados em formato Json
+#include <ArduinoJson.h> //dados em formato Json
 
 /*
     VARIÁVEIS DE BIBLIOTECAS
@@ -31,12 +31,12 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil
     VARIÁVEIS DE SETUP
 */
 //  [Conexões Externas]
-const char* ssid = "777zip";
+const char* ssid = "777zip";  //nome da rede
 const char* password = "R125redes";
 
-const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
-const int broker_port = 1883;
-const char* client_id = "esp32_00:14:22:01:23:45";
+const char* ip_broker = "10.67.23.26";  //ou IP do seu broker local
+const int broker_port = 1883; //porta do broker
+const char* client_id = "esp32_00:14:22:01:23:45"; //id do equipamento conectado
 
 /*
     Tópicos sem MAC
@@ -47,21 +47,15 @@ String topic_pub_temperatura = "temperatura";
 String topic_pub_bpm = "bpm";
 String topic_pub_oxigenacao = "oxigenacao";
 
-/*
-    Variável que recebera o mac do dispositivo
-*/
-String mac_address;
 
-/*
-    Variável que recebera o id do relacionamento do esp <--> usuário
-*/
-String user;
+String mac_address; // Variável que recebera o mac do dispositivo
+
+String user; // Variável que recebera o id do relacionamento do esp <--> usuário
 
 
 //  [Conexões Internas]
 // --- Interface I2C --- //
 TwoWire I2C_0 = TwoWire(0);
-//TwoWire I2C_1 = TwoWire(1);
 
 // --- Sensores e display --- //
 MAX30105 particleSensor;
@@ -70,30 +64,31 @@ Adafruit_SSD1306 display(128, 64, &I2C_0, -1);
 
 
 // --- Variáveis para cálculos spO2 e BPM --- //
-double avered = 0;
-double aveir = 0;
+double avered = 0; // Média leitura de luz red
+double aveir = 0; // Média leitura de luz infrared
 double sumirrms = 0;
 double sumredrms = 0;
 int i = 0;
-int Num = 200; //intervalo de amostragem para o cálculo de SpO2
-double ESpO2 = 95.0; // valor inicial de SpO2 estimado
-double FSpO2 = 0.7;  // fator de filtro para SpO2 estimado
-double frate = 0.95; // filtro passa-baixo para o valor do LED IR/vermelho
+int Num = 200; // Intervalo de amostragem para o cálculo de SpO2
+double ESpO2 = 95.0; // Valor inicial de SpO2 estimado
+double FSpO2 = 0.7;  // Fator de filtro para SpO2 estimado
+double frate = 0.95; // Filtro passa-baixo para o valor do LED IR/vermelho
 
-#define TIMETOBOOT 3000 // tempo de espera (ms) para a saída do SpO2
-#define SCALE 88.0 // ajuste para exibir batimento cardíaco e SpO2 na mesma escala
-#define SAMPLING 5 // mais preciso se definido como 1
-#define FINGER_ON 30000 // se o sinal vermelho for menor que isso, indica que o dedo não está no sensor
-#define MINIMUM_SPO2 80.0
+#define TIMETOBOOT 3000 // Tempo de espera (ms) para a saída do SpO2
+#define SCALE 88.0 // Ajuste para exibir batimento cardíaco e SpO2 na mesma escala
+#define SAMPLING 5 // Mais preciso se definido como 1
+#define FINGER_ON 30000 // Se o sinal vermelho for menor que isso, indica que o dedo não está no sensor
+#define MINIMUM_SPO2 80.0 // Mínimo inicial da oxigenação
 
 const byte RATE_SIZE = 4; // Aumente isso para mais média. 4 é bom.
 byte rates[RATE_SIZE]; // Array de batimentos cardíacos
 byte rateSpot = 0;
 long lastBeat = 0; // Hora em que ocorreu o último batimento
-float beatsPerMinute;
-int beatAvg;
-double spo2 = 0.0;
-double temp = 0.0;
+float beatsPerMinute; 
+
+int beatAvg; // Váriavel de BPM
+double spo2 = 0.0; // Váriavel de Oxigenação
+double temp = 0.0; // Váriavel de temperatura
 
 #define USEFIFO
 
@@ -255,6 +250,9 @@ void readMAX() {
     for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
     beatAvg /= RATE_SIZE;
    }
+
+ BPM = beatAvg;
+
   }
 
  //Cálculo de SpO2
@@ -289,6 +287,7 @@ void readMAX() {
 #endif
 
  spo2 = ESpO2;
+
 }
 
 
@@ -307,7 +306,7 @@ void displayOled() {
   display.println(" %");
     
   display.print("BPM: ");
-  display.println(beatAvg, 1);
+  display.println(BPM, 1);
 
   display.print("Temp: ");
   display.print(temp, 1);
@@ -395,11 +394,11 @@ void loop() {
         std::string valor;
 
         if (strcmp(tipos[i], "temperatura") == 0) {
-            valor = std::to_string(random(330, 370));
+            valor = std::to_string(temp);
         } else if (strcmp(tipos[i], "oxigenacao") == 0) {
-            valor = std::to_string(random(90, 100));
+            valor = std::to_string(spo2);
         } else if (strcmp(tipos[i], "bpm") == 0) {
-            valor = std::to_string(random(60, 120));
+            valor = std::to_string(BPM);
         }
 
         StaticJsonDocument<200> doc;
