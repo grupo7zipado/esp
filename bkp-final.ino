@@ -366,14 +366,12 @@ void setup() {
  initSensors(); //inicia os sensores
 }
 
+const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
+
 /*
     VOID LOOP
 */
 void loop() {
-    const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
-
-void loop() {
-
       if (!mqttClient.connected()) {
         reconnect_mqtt();  // sua função de reconexão
     }
