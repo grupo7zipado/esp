@@ -1,81 +1,18 @@
-//
-//
 
 /*
     BIBLIOTECAS
 */
-
-
-/*
-    WIFI
-*/ 
-#include <WiFi.h>
-
-/*
-    MQTT
-*/
-#include <PubSubClient.h>
-
-/*
-    MANIPULA A MEMÓRIA PERMANENTE
-*/
-#include <Preferences.h>
-
-
-/*
-    HORA EM TEMPO REAL
-*/ 
-#include <NTPClient.h>
-
-/*
-    JSON PARA ARDUINO/ESP
-*/ 
-#include <ArduinoJson.h>
-
-
-#include <Wire.h>
-#include <WiFi.h>
-#include "MAX30105.h"
-#include "heartRate.h"
-#include <Adafruit_MLX90614.h>
-//#include <BlynkSimpleEsp32.h>
-
-
-
-
-/*
-    VARIÁVEIS DE SETUP
-*/
-
-TwoWire I2C_0 = TwoWire(0);
-MAX30105 particleSensor;
-Adafruit_MLX90614 mlx = Adafruit_MLX90614();
-
-double avered = 0, aveir = 0, sumirrms = 0, sumredrms = 0;
-int i = 0;
-int Num = 200;
-double ESpO2 = 95.0;
-double FSpO2 = 0.7;
-double frate = 0.95;
-
-#define TIMETOBOOT 3000
-#define SAMPLING 5
-#define FINGER_ON 30000
-#define MINIMUM_SPO2 80.0
-
-const byte RATE_SIZE = 4;
-byte rates[RATE_SIZE];
-byte rateSpot = 0;
-long lastBeat = 0;
-float beatsPerMinute;
-int beatAvg;
-double spo2 = 0.0;
-double temp = 0.0;
-
-#define USEFIFO
-
-
-
+#include <Wire.h> //configuração de I2C
+#include <WiFi.h> //biblioteca WiFi
+#include <Preferences.h> // manipulação de memoria
+#include <NTPClient.h> //Data e hora
+#include "MAX30105.h" //sensor BPM/Oxigenação
+#include "heartRate.h" //processamento de BPM?Oxigenação
+#include <Adafruit_MLX90614.h> //sensor de temperatura
+#include <Adafruit_SSD1306.h> //controle do display
+#include <Adafruit_GFX.h> //biblioteca grafica do display
+#include <PubSubClient.h> //broker MQTT
+#include <ArduinoJson.h> // dados em formato Json
 
 /*
     VARIÁVEIS DE BIBLIOTECAS
@@ -92,48 +29,16 @@ WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil)
 
 /*
-    VARIÁVEIS CONEXÃO WIFI
-    SSID
-    SENHA
+    VARIÁVEIS DE SETUP
 */
-// const char* ssid = "TP-Link_0486";
-// const char* password = "46179951";
-
+//  [Conexões Externas]
 const char* ssid = "777zip";
 const char* password = "R125redes";
 
-// const char* ssid = "R124";
-// const char* password = "R124@redes";
-
-/*
-    VARIÁVEIS CONEXÃO BROKER
-    IP DO SERVIDOR DO BROKER
-    PORTA DO BROKER 
-    ID DO CLIENTE
-    TÓPICO DE SUBSCRIÇÃO
-    TÓPICO DE ENVIO
-*/
-/*
-    Conexão broker MQTT
-*/
-
 const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
-// const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
-// const char* ip_broker = "192.168.0.2";  // Ou IP do seu broker local
-// const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
-
 const int broker_port = 1883;
-
-/*
-    Nome da conexão do broker <--> esp
-    //depois fazer a diferenciação entre cada esp
-*/
 const char* client_id = "esp32_00:14:22:01:23:45";
 
-
-// const char* mqtt_topic_sub = "/use_id";   // Tópico para inscrição
-// const char* mqtt_topic_pub = "/dados_tipo";   // enviar dados
-// const char* first_conect =  "/request_user";   // Tópico para publicação
 /*
     Tópicos sem MAC
 */
@@ -142,8 +47,6 @@ String topic_sub_response_user = "response_user";
 String topic_pub_temperatura = "temperatura";
 String topic_pub_bpm = "bpm";
 String topic_pub_oxigenacao = "oxigenacao";
-
-
 
 /*
     Variável que recebera o mac do dispositivo
@@ -156,45 +59,49 @@ String mac_address;
 String user;
 
 
+//  [Conexões Internas]
+// --- Interface I2C --- //
+TwoWire I2C_0 = TwoWire(0);
+TwoWire I2C_1 = TwoWire(1);
+
+// --- Sensores e display --- //
+MAX30105 particleSensor;
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+Adafruit_SSD1306 display(128, 64, &I2C_0, -1);
+
+
+// --- Variáveis para cálculos spO2 e BPM --- //
+double avered = 0;
+double aveir = 0;
+double sumirrms = 0;
+double sumredrms = 0;
+int i = 0;
+int Num = 200; //intervalo de amostragem para o cálculo de SpO2
+double ESpO2 = 95.0; // valor inicial de SpO2 estimado
+double FSpO2 = 0.7;  // fator de filtro para SpO2 estimado
+double frate = 0.95; // filtro passa-baixo para o valor do LED IR/vermelho
+
+#define TIMETOBOOT 3000 // tempo de espera (ms) para a saída do SpO2
+#define SCALE 88.0 // ajuste para exibir batimento cardíaco e SpO2 na mesma escala
+#define SAMPLING 5 // mais preciso se definido como 1
+#define FINGER_ON 30000 // se o sinal vermelho for menor que isso, indica que o dedo não está no sensor
+#define MINIMUM_SPO2 80.0
+
+const byte RATE_SIZE = 4; // Aumente isso para mais média. 4 é bom.
+byte rates[RATE_SIZE]; // Array de batimentos cardíacos
+byte rateSpot = 0;
+long lastBeat = 0; // Hora em que ocorreu o último batimento
+float beatsPerMinute;
+int beatAvg;
+double spo2 = 0.0;
+double temp = 0.0;
+
+#define USEFIFO
+
 
 /*
     FUNÇÕES DE SETUP
 */
-
-void initI2C() {
-  I2C_0.begin(8, 9);
-  I2C_0.setClock(100000);
-}
-
-void confMAX30102() {
-  byte ledBrightness = 0x7F;
-  byte sampleAverage = 4;
-  byte ledMode = 3;
-  int sampleRate = 200;
-  int pulseWidth = 411;
-  int adcRange = 16384;
-
-  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
-}
-
-
-
-void initSensors() {
-  if (!particleSensor.begin(I2C_0)) {
-    Serial.println("Erro: MAX30102 não encontrado.");
-    while (1);
-  }
-
-  confMAX30102();
-  if (!mlx.begin(0x5A, &I2C_0)) {
-    Serial.println("Erro: MLX90614 não encontrado.");
-    while (1);
-  }
-}
-
-
-
-
 // Função para conectar ao Wi-Fi
 void setup_wifi() {
     Serial.print(" Conectando ao Wi-Fi: ");
@@ -209,11 +116,6 @@ void setup_wifi() {
     Serial.print(" IP: ");
     Serial.println(WiFi.localIP());
 }
-
-
-
-
-
 
 /*
     mqttCallback
@@ -292,77 +194,127 @@ void enviarPrimeiraMensagem() {
     Serial.println("✅ Publicação bem-sucedida no tópico: " + topic_pub_request_user);
 }
 
+void initI2C() {
+    I2C_0.begin(21,22); //I2C 0 para o MAX30102 e Display Oled
+    // I2C_1.begin(6, 7); //I2C 1 para o MLX90614
+}
+
+void initDisplay() {
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //inicia o display
+  display.clearDisplay();
+  display.display();
+}
+
+void confMAX30102() {
+// variáveis de hardware do sensor
+  byte ledBrightness = 0x7F; //intensidade do led
+  byte sampleAverage = 4; //amostras para média 
+  byte ledMode = 3; //modo do led
+  int sampleRate = 200; //frequência de amostragem (Hz)
+  int pulseWidth = 411; //duração de pulso do led
+  int adcRange = 16384; // faixa de leitura adc
+
+
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
+}
+
+void initSensors() {
+particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
+//I2C_0.setClock(400000); //altere a velocidade entre 100/400 kHz
+confMAX30102();
+mlx.begin(0x5A, &I2C_1); //inicia o sensor MLX90614
+
+}
+
 /*
     FUNÇÕES DE LEITURA
 */
 
-
 void readMAX() {
-  uint32_t ir, red;
-  double fred, fir;
-  double SpO2 = 0;
+ uint32_t ir, red;
+ double fred, fir;
+ double SpO2 = 0; // SpO2 bruto
 
 #ifdef USEFIFO
+ particleSensor.check(); // Verifica o sensor, lê até 3 amostras
 
-  particleSensor.check();
-  while (particleSensor.available()) {
-    red = particleSensor.getFIFORed();
-    ir = particleSensor.getFIFOIR();
+ while (particleSensor.available()) {
+  red = particleSensor.getFIFORed();
+  ir = particleSensor.getFIFOIR();
 
-    if (checkForBeat(ir)) {
-      long delta = millis() - lastBeat;
-      lastBeat = millis();
-      beatsPerMinute = 60 / (delta / 1000.0);
+ //Cálculo de BPM
+  if (checkForBeat(ir)) {
+   long delta = millis() - lastBeat;
+   lastBeat = millis();
+   beatsPerMinute = 60 / (delta / 1000.0);
 
-      if (beatsPerMinute < 255 && beatsPerMinute > 20) {
-        rates[rateSpot++] = (byte)beatsPerMinute;
-        rateSpot %= RATE_SIZE;
+   if (beatsPerMinute < 255 && beatsPerMinute > 20) {
+    rates[rateSpot++] = (byte)beatsPerMinute;
+    rateSpot %= RATE_SIZE;
 
-        beatAvg = 0;
-        for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
-        beatAvg /= RATE_SIZE;
-      }
-    }
-
-    i++;
-    fred = (double)red;
-    fir = (double)ir;
-
-    avered = avered * frate + red * (1.0 - frate);
-    aveir = aveir * frate + ir * (1.0 - frate);
-    sumredrms += (fred - avered) * (fred - avered);
-    sumirrms += (fir - aveir) * (fir - aveir);
-
-    if ((i % SAMPLING) == 0 && millis() > TIMETOBOOT) {
-      if (ir < FINGER_ON) {
-        ESpO2 = MINIMUM_SPO2;
-      }
-    }
-
-    if ((i % Num) == 0) {
-      double R = (sqrt(sumredrms) / avered) / (sqrt(sumirrms) / aveir);
-      SpO2 = -23.3 * (R - 0.4) + 100;
-      ESpO2 = FSpO2 * ESpO2 + (1.0 - FSpO2) * SpO2;
-
-      sumredrms = 0.0;
-      sumirrms = 0.0;
-      i = 0;
-
-      break;
-    }
-
-    particleSensor.nextSample();
+    beatAvg = 0;
+    for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
+    beatAvg /= RATE_SIZE;
+   }
   }
 
+ //Cálculo de SpO2
+  i++;
+  fred = (double)red;
+  fir = (double)ir;
+
+  avered = avered * frate + red * (1.0 - frate);
+  aveir = aveir * frate + ir * (1.0 - frate);
+  sumredrms += (fred - avered) * (fred - avered);
+  sumirrms += (fir - aveir) * (fir - aveir);
+
+  if ((i % SAMPLING) == 0 && millis() > TIMETOBOOT) {
+   if (ir < FINGER_ON) {
+    ESpO2 = MINIMUM_SPO2;
+   }
+  }
+
+  if ((i % Num) == 0) {
+   double R = (sqrt(sumredrms) / avered) / (sqrt(sumirrms) / aveir);
+   SpO2 = -23.3 * (R - 0.4) + 100;
+   ESpO2 = FSpO2 * ESpO2 + (1.0 - FSpO2) * SpO2;
+
+   sumredrms = 0.0;
+   sumirrms = 0.0;
+   i = 0;
+   break;
+  }
+
+  particleSensor.nextSample();
+ }
 #endif
 
-  spo2 = ESpO2;
+ spo2 = ESpO2;
 }
+
 
 void readMLX() {
-  temp = mlx.readObjectTempC();
+// --- MLX90614 --- //
+ temp = mlx.readObjectTempC(); //leitura da temperatura corporal
 }
 
+void displayOled() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.print("SpO2: ");
+  display.print(spo2, 1);
+  display.println(" %");
+    
+  display.print("BPM: ");
+  display.println(beatAvg, 1);
+
+  display.print("Temp: ");
+  display.print(temp, 1);
+  display.println(" C");
+  display.display();
+    }
 /*
     SISTEMA OPERACIONAL
 */
@@ -371,37 +323,19 @@ void readMLX() {
 /*
     VOID SETUP
 */
-
-
 void setup() {
-    //inicia o serial
-    Serial.begin(115200);
-
-    //Inicia o wifi
-    setup_wifi();
-
-    //initI2C();
-    //initSensors();
-
-    /*
-        Da as informações do broker
-        Ip do broker
-        Porta
-        Seta a função de callback que recebe todas as pensagens de subscrições no esp 
-    */
-    mqttClient.setServer(ip_broker, broker_port);
+ Serial.begin(115200); //monitor serial
+ setup_wifi();
+ mqttClient.setServer(ip_broker, broker_port);
     mqttClient.setCallback(mqttCallback);
 
     timeClient.begin();
     timeClient.update();
 
-    /*
-    
-    */
-    // Abrir namespace "config" no modo leitura/escrita
+     // Abrir namespace "config" no modo leitura/escrita
     prefs.begin("config", false);
     // temporario para testes
-    prefs.remove("user");
+    //prefs.remove("user");
     // Ver se já existe valor salvo
     user = prefs.getString("user", "");
     mac_address = WiFi.macAddress();
@@ -428,12 +362,15 @@ void setup() {
     Serial.println("topic_pub_oxigenacao: " + topic_pub_oxigenacao);
 
 
+ //initI2C(); //inicia o barramento I2C
+ //initDisplay(); //inicia o Display 
+ //initSensors(); //inicia os sensores
 }
 
 /*
     VOID LOOP
 */
-const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
+    const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
 
 void loop() {
 
@@ -443,11 +380,8 @@ void loop() {
 
     mqttClient.loop();
     
-    //   Blynk.run();
-    // timer.run();
-    // readMAX();
-    // readMLX();
-
+    
+    
     // Verifica se o user está vazio
     if (user == "") {
 
@@ -469,7 +403,8 @@ void loop() {
         } else if (strcmp(tipos[i], "bpm") == 0) {
             valor = std::to_string(random(60, 120));
         }
-
+        double testedomais = mlx.readObjectTempC();
+        Serial.println(testedomais);
         StaticJsonDocument<200> doc;
         doc["use_id"] = user;
         doc["dados_tipo"] = tipos[i];
@@ -495,4 +430,7 @@ void loop() {
 
     delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
   
-  }
+ //readMAX();
+ //readMLX();
+ //displayOled();
+}

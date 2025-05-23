@@ -471,9 +471,10 @@ void loop() {
         // }    
         
         StaticJsonDocument<200> doc;
-        doc["use_id"] = user;
+        // doc["use_id"] = user;
+        doc["use_id"] = "1"; 
         doc["dados_tipo"] = "temperatura";
-        doc["dados_valor"] = mlx.readObjectTempC();
+        doc["dados_valor"] = "10";
         doc["dados_generate"] = timeClient.getEpochTime();
 
         String msg;
