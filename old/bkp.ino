@@ -46,8 +46,12 @@
 // const char* ssid = "TP-Link_0486";
 // const char* password = "46179951";
 
-const char* ssid = "777zip";
-const char* password = "R125redes";
+// const char* ssid = "777zip";
+// const char* password = "R125redes";
+
+const char* ssid = "R124";
+const char* password = "R124@redes";
+
 
 /*
     VARIÁVEIS CONEXÃO BROKER
@@ -229,7 +233,7 @@ void setup() {
     // Abrir namespace "config" no modo leitura/escrita
     prefs.begin("config", false);
     // temporario para testes
-    // prefs.remove("user");
+    prefs.remove("user");
     // Ver se já existe valor salvo
     user = prefs.getString("user", "");
     mac_address = WiFi.macAddress();
