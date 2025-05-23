@@ -60,8 +60,11 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil
 // const char* ssid = "TP-Link_0486";
 // const char* password = "46179951";
 
-const char* ssid = "777zip";
-const char* password = "R125redes";
+// const char* ssid = "777zip";
+// const char* password = "R125redes";
+
+const char* ssid = "R124";
+const char* password = "R124@redes";
 
 /*
     VARIÁVEIS CONEXÃO BROKER
@@ -75,8 +78,8 @@ const char* password = "R125redes";
     Conexão broker MQTT
 */
 
-const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
-// const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
+// const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
+const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
 // const char* ip_broker = "192.168.0.2";  // Ou IP do seu broker local
 // const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
 

@@ -25,18 +25,71 @@
 /*
     HORA EM TEMPO REAL
 */ 
-//#include <NTPClient.h>
+#include <NTPClient.h>
 
 /*
     JSON PARA ARDUINO/ESP
 */ 
-//#include <ArduinoJson.h>
+#include <ArduinoJson.h>
+
+
+#include <Wire.h>
+#include <WiFi.h>
+#include "MAX30105.h"
+#include "heartRate.h"
+#include <Adafruit_MLX90614.h>
+//#include <BlynkSimpleEsp32.h>
+
 
 
 
 /*
     VARIÁVEIS DE SETUP
 */
+
+TwoWire I2C_0 = TwoWire(0);
+MAX30105 particleSensor;
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+
+double avered = 0, aveir = 0, sumirrms = 0, sumredrms = 0;
+int i = 0;
+int Num = 200;
+double ESpO2 = 95.0;
+double FSpO2 = 0.7;
+double frate = 0.95;
+
+#define TIMETOBOOT 3000
+#define SAMPLING 5
+#define FINGER_ON 30000
+#define MINIMUM_SPO2 80.0
+
+const byte RATE_SIZE = 4;
+byte rates[RATE_SIZE];
+byte rateSpot = 0;
+long lastBeat = 0;
+float beatsPerMinute;
+int beatAvg;
+double spo2 = 0.0;
+double temp = 0.0;
+
+#define USEFIFO
+
+
+
+
+/*
+    VARIÁVEIS DE BIBLIOTECAS
+*/
+
+Preferences prefs;
+
+WiFiClient espClient;
+
+PubSubClient mqttClient(espClient);
+
+// Configuração do NTP
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil)
 
 /*
     VARIÁVEIS CONEXÃO WIFI
@@ -46,12 +99,11 @@
 // const char* ssid = "TP-Link_0486";
 // const char* password = "46179951";
 
-// const char* ssid = "777zip";
-// const char* password = "R125redes";
+const char* ssid = "777zip";
+const char* password = "R125redes";
 
-const char* ssid = "R124";
-const char* password = "R124@redes";
-
+// const char* ssid = "R124";
+// const char* password = "R124@redes";
 
 /*
     VARIÁVEIS CONEXÃO BROKER
@@ -64,10 +116,12 @@ const char* password = "R124@redes";
 /*
     Conexão broker MQTT
 */
-const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
 
+// const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
+const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
 // const char* ip_broker = "192.168.0.2";  // Ou IP do seu broker local
 // const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
+
 const int broker_port = 1883;
 
 /*
@@ -102,15 +156,44 @@ String mac_address;
 String user;
 
 
-bool pedio = false;
 
 /*
     FUNÇÕES DE SETUP
 */
 
-Preferences prefs;
+void initI2C() {
+  I2C_0.begin(8, 9);
+  I2C_0.setClock(100000);
+}
 
-WiFiClient espClient;
+void confMAX30102() {
+  byte ledBrightness = 0x7F;
+  byte sampleAverage = 4;
+  byte ledMode = 3;
+  int sampleRate = 200;
+  int pulseWidth = 411;
+  int adcRange = 16384;
+
+  particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
+}
+
+
+
+void initSensors() {
+  if (!particleSensor.begin(I2C_0)) {
+    Serial.println("Erro: MAX30102 não encontrado.");
+    while (1);
+  }
+
+  confMAX30102();
+  if (!mlx.begin(0x5A, &I2C_0)) {
+    Serial.println("Erro: MLX90614 não encontrado.");
+    while (1);
+  }
+}
+
+
+
 
 // Função para conectar ao Wi-Fi
 void setup_wifi() {
@@ -128,7 +211,6 @@ void setup_wifi() {
 }
 
 
-PubSubClient mqttClient(espClient);
 
 
 
@@ -157,7 +239,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }
     Serial.println();
 
-    //verifica se o tipico e o correto
+    //verifica se o topico e o correto
     if(strcmp(topic, topic_sub_response_user.c_str()) == 0){
         //joga o payload(usuario) dentro de uma variavel
         String novoUser;
@@ -169,7 +251,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         prefs.begin("config", false);
         prefs.putString("user", novoUser);
         prefs.end();
-
+        // Atualiza o valor do usuário no codigo
+        user = novoUser;
         Serial.println("Novo usuário salvo: " + novoUser);
     }else{
         Serial.println("topico errado AaaaaaaaaaaaaaaaaaHH");
@@ -214,6 +297,72 @@ void enviarPrimeiraMensagem() {
 */
 
 
+void readMAX() {
+  uint32_t ir, red;
+  double fred, fir;
+  double SpO2 = 0;
+
+#ifdef USEFIFO
+
+  particleSensor.check();
+  while (particleSensor.available()) {
+    red = particleSensor.getFIFORed();
+    ir = particleSensor.getFIFOIR();
+
+    if (checkForBeat(ir)) {
+      long delta = millis() - lastBeat;
+      lastBeat = millis();
+      beatsPerMinute = 60 / (delta / 1000.0);
+
+      if (beatsPerMinute < 255 && beatsPerMinute > 20) {
+        rates[rateSpot++] = (byte)beatsPerMinute;
+        rateSpot %= RATE_SIZE;
+
+        beatAvg = 0;
+        for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
+        beatAvg /= RATE_SIZE;
+      }
+    }
+
+    i++;
+    fred = (double)red;
+    fir = (double)ir;
+
+    avered = avered * frate + red * (1.0 - frate);
+    aveir = aveir * frate + ir * (1.0 - frate);
+    sumredrms += (fred - avered) * (fred - avered);
+    sumirrms += (fir - aveir) * (fir - aveir);
+
+    if ((i % SAMPLING) == 0 && millis() > TIMETOBOOT) {
+      if (ir < FINGER_ON) {
+        ESpO2 = MINIMUM_SPO2;
+      }
+    }
+
+    if ((i % Num) == 0) {
+      double R = (sqrt(sumredrms) / avered) / (sqrt(sumirrms) / aveir);
+      SpO2 = -23.3 * (R - 0.4) + 100;
+      ESpO2 = FSpO2 * ESpO2 + (1.0 - FSpO2) * SpO2;
+
+      sumredrms = 0.0;
+      sumirrms = 0.0;
+      i = 0;
+
+      break;
+    }
+
+    particleSensor.nextSample();
+  }
+
+#endif
+
+  spo2 = ESpO2;
+}
+
+void readMLX() {
+  temp = mlx.readObjectTempC();
+}
+
 /*
     SISTEMA OPERACIONAL
 */
@@ -225,11 +374,30 @@ void enviarPrimeiraMensagem() {
 
 
 void setup() {
+    //inicia o serial
     Serial.begin(115200);
+
+    //Inicia o wifi
     setup_wifi();
 
+    //initI2C();
+    //initSensors();
+
+    /*
+        Da as informações do broker
+        Ip do broker
+        Porta
+        Seta a função de callback que recebe todas as pensagens de subscrições no esp 
+    */
     mqttClient.setServer(ip_broker, broker_port);
     mqttClient.setCallback(mqttCallback);
+
+    timeClient.begin();
+    timeClient.update();
+
+    /*
+    
+    */
     // Abrir namespace "config" no modo leitura/escrita
     prefs.begin("config", false);
     // temporario para testes
@@ -247,6 +415,8 @@ void setup() {
     */
     topic_pub_request_user = mac_address + "/" + topic_pub_request_user;
     topic_sub_response_user = mac_address + "/" + topic_sub_response_user;
+
+    //REVER OS TOPICOS DE DADOS E TORNA ELES DINAMICOS
     topic_pub_temperatura = mac_address + "/" + topic_pub_temperatura;
     topic_pub_bpm = mac_address + "/" + topic_pub_bpm;
     topic_pub_oxigenacao = mac_address + "/" + topic_pub_oxigenacao;
@@ -263,7 +433,7 @@ void setup() {
 /*
     VOID LOOP
 */
-
+const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
 
 void loop() {
 
@@ -272,14 +442,55 @@ void loop() {
     }
 
     mqttClient.loop();
+    
+    //   Blynk.run();
+    timer.run();
+    // readMAX();
+    readMLX();
 
-    static bool primeiraMensagemEnviada = false;
+    // Verifica se o user está vazio
+    if (user == "") {
 
-    if (!primeiraMensagemEnviada) {
-        enviarPrimeiraMensagem();
-        primeiraMensagemEnviada = true;
+        Serial.println("Usuário não definido.");
+        static bool primeiraMensagemEnviada = false;
+        //pede um novo usuário
+        if (!primeiraMensagemEnviada) {
+            enviarPrimeiraMensagem();
+            primeiraMensagemEnviada = true;
+        }
+    } else {
+       for (int i = 0; i < 3; i++) {
+        std::string valor;
+
+        // if (strcmp(tipos[i], "temperatura") == 0) {
+        //     valor = std::to_string(random(330, 370));
+        // } else if (strcmp(tipos[i], "oxigenacao") == 0) {
+        //     valor = std::to_string(random(90, 100));
+        // } else if (strcmp(tipos[i], "bpm") == 0) {
+        //     valor = std::to_string(random(60, 120));
+        // }    
+        
+        StaticJsonDocument<200> doc;
+        doc["use_id"] = user;
+        doc["dados_tipo"] = "temperatura";
+        doc["dados_valor"] = mlx.readObjectTempC();
+        doc["dados_generate"] = timeClient.getEpochTime();
+
+        String msg;
+        serializeJson(doc, msg);
+
+        String topicoaaa = mac_address+ "/" + tipos[i];
+        // 🚀 Verifica se a mensagem foi publicada com sucesso
+        if (mqttClient.publish(topicoaaa.c_str(), msg.c_str())) {
+          Serial.println("✅ Mensagem enviada: " + msg);
+        } else {
+          Serial.println("❌ ERRO ao enviar: " + msg);
+        }
+
+        delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
+      }
+        Serial.println("Usuário salvo: " + user);
     }
-
     
 
     delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
