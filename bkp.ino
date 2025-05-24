@@ -108,7 +108,7 @@ float beatsPerMinute;
 int beatAvg;
 double spo2 = 0.0;
 double temp = 0.0;
-
+double abpm = 0.0;
 #define USEFIFO
 
 
@@ -241,9 +241,9 @@ void confMAX30102() {
 }
 
 void initSensors() {
-//particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
-//I2C_0.setClock(400000); //altere a velocidade entre 100/400 kHz
-//confMAX30102();
+particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
+I2C_0.setClock(100000); //altere a velocidade entre 100/400 kHz
+confMAX30102();
 mlx.begin(0x5A, &I2C_0); //inicia o sensor MLX90614
 
 }
@@ -277,6 +277,7 @@ void readMAX() {
     beatAvg = 0;
     for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
     beatAvg /= RATE_SIZE;
+    abpm = beatAvg;
    }
   }
 
@@ -415,9 +416,11 @@ void loop() {
             primeiraMensagemEnviada = true;
         }
     } else {
+        readMAX();
+        
        for (int i = 0; i < 3; i++) {
         String valor;
-
+        
         if (strcmp(tipos[i], "temperatura") == 0) {
             Serial.println("na leitura de temperatura");
             readMLX();
@@ -427,23 +430,28 @@ void loop() {
             Serial.println("fim da leitura");
 
         } else if (strcmp(tipos[i], "oxigenacao") == 0) {
-            valor = String(random(90, 100));
+            valor = String(spo2, 2);
+            Serial.println(valor);
+            
         } else if (strcmp(tipos[i], "bpm") == 0) {
-            valor = String(random(60, 120));
+            valor = String(abpm);
+            Serial.println(valor);
+
+            // valor = String(random(60, 120));
         }
 
-            Serial.println("envio dados");
+            // Serial.println("envio dados");
 
         StaticJsonDocument<200> doc;
             Serial.println("user");
 
         doc["use_id"] = user;
-            Serial.println("tipo");
+            // Serial.println("tipo");
 
         doc["dados_tipo"] = tipos[i];
-            Serial.println("valor");
+            // Serial.println("valor");
         doc["dados_valor"] = valor;
-            Serial.println("tempo");
+            // Serial.println("tempo");
 
         doc["dados_generate"] = timeClient.getEpochTime();
 
@@ -466,6 +474,5 @@ void loop() {
 
     delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
   
- //readMAX();
  //displayOled();
 }
