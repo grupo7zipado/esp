@@ -48,7 +48,7 @@ const char* password = "R125redes";
 // Definições do Broker MQTT
 // const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
 
-const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
+const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
 const int broker_port = 1883;
 const char* client_id = "esp32_00:14:22:01:23:45";
 
@@ -75,7 +75,6 @@ String user;
 //  [Conexões Internas]
 // --- Interface I2C --- //
 TwoWire I2C_0 = TwoWire(0);
-TwoWire I2C_1 = TwoWire(1);
 
 // --- Sensores e display --- //
 MAX30105 particleSensor;
@@ -171,12 +170,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         user = novoUser;
         Serial.println("atualizou na memoria de execução");
         Serial.println("Novo usuário salvo: " + novoUser);
-        Serial.println("aaaaa");
-        Serial.println("aaaaa");
-        Serial.println("aaaaa");
-        Serial.println("aaaaa");
-        Serial.println("aaaaa");
-        Serial.println("aaaaa");
     }else{
         Serial.println("topico errado AaaaaaaaaaaaaaaaaaHH");
     }
@@ -241,10 +234,18 @@ void confMAX30102() {
 }
 
 void initSensors() {
-particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
-I2C_0.setClock(100000); //altere a velocidade entre 100/400 kHz
+
+
+if (!particleSensor.begin(I2C_0)) {
+  Serial.println("Erro: MAX30102 não encontrado.");
+  while (1);
+}
+
 confMAX30102();
-//mlx.begin(0x5A, &I2C_0); //inicia o sensor MLX90614
+// particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
+// I2C_0.setClock(100000); //altere a velocidade entre 100/400 kHz
+// confMAX30102();
+// mlx.begin(0x5A, &I2C_0); //inicia o sensor MLX90614
 
 }
 
@@ -316,10 +317,10 @@ void readMAX() {
 }
 
 
-void readMLX() {
-// --- MLX90614 --- //
- temp = mlx.readObjectTempC(); //leitura da temperatura corporal
-}
+// void readMLX() {
+// // --- MLX90614 --- //
+//  temp = mlx.readObjectTempC(); //leitura da temperatura corporal
+// }
 
 void displayOled() {
   display.clearDisplay();
@@ -416,40 +417,36 @@ void loop() {
             primeiraMensagemEnviada = true;
         }
     } else {
-        
        for (int i = 0; i < 3; i++) {
         String valor;
-        
+
         if (strcmp(tipos[i], "temperatura") == 0) {
-            //Serial.println("na leitura de temperatura");
-            //readMLX();
-            valor = String(temp, 2); // duas casas decimais
-            //Serial.println("fim da leitura");
-            Serial.println(valor);
-
+          //Serial.println("na leitura de temperatura");
+          //readMLX();
+          //valor = String(temp, 2); // duas casas decimais
+          
         } else if (strcmp(tipos[i], "oxigenacao") == 0) {
-            valor = String(spo2, 2);
-            Serial.println(valor);
-            
-        } else if (strcmp(tipos[i], "bpm") == 0) {
-            valor = String(abpm);
-            Serial.println(valor);
+          readMAX();
+          valor = String(spo2, 2);
 
-            // valor = String(random(60, 120));
+        } else if (strcmp(tipos[i], "bpm") == 0) {
+          readMAX();
+          valor = String(abpm, 2);
+
         }
 
-            // Serial.println("envio dados");
+            Serial.println("envio dados");
 
         StaticJsonDocument<200> doc;
-            Serial.println("user");
+            //Serial.println("user");
 
         doc["use_id"] = user;
-            // Serial.println("tipo");
+            //Serial.println("tipo");
 
         doc["dados_tipo"] = tipos[i];
-            // Serial.println("valor");
+            //Serial.println("valor");
         doc["dados_valor"] = valor;
-            // Serial.println("tempo");
+            //Serial.println("tempo");
 
         doc["dados_generate"] = timeClient.getEpochTime();
 
@@ -464,13 +461,12 @@ void loop() {
           Serial.println("❌ ERRO ao enviar: " + msg);
         }
 
-        //delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
       }
         Serial.println("Usuário salvo: " + user);
     }
     
 
-    //delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
   
+ //readMAX();
  //displayOled();
 }
