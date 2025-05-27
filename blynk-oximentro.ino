@@ -24,7 +24,7 @@
 
 char auth[] = "Ps4x-azvYfIefO9nQjBK-Orcbyc-N5kh";     // Token do Blynk
 const char* ssid = "TP-Link_0486";
-const char* password = "46179951";
+const char* pass = "46179951";
 //char ssid[] = "12S";       // Nome da rede WiFi
 //char pass[] = "midi0303";          // Senha da rede WiFi
 
@@ -68,7 +68,7 @@ double temp = 0.0;
 */
 
 void initI2C() {
-  I2C_0.begin(8, 9);
+  I2C_0.begin(21, 22);
   I2C_0.setClock(100000);
 }
 
@@ -92,10 +92,10 @@ void initSensors() {
   }
 
   confMAX30102();
-  if (!mlx.begin(0x5A, &I2C_0)) {
-    Serial.println("Erro: MLX90614 não encontrado.");
-    while (1);
-  }
+  // if (!mlx.begin(0x5A, &I2C_0)) {
+  //   Serial.println("Erro: MLX90614 não encontrado.");
+  //   while (1);
+  // }
 }
 
 /*
@@ -162,10 +162,17 @@ void readMAX() {
 #endif
 
   spo2 = ESpO2;
+  Serial.println("SPO2");
+  Serial.println(spo2);
+  Serial.println("BPM");
+  Serial.println(beatAvg);
 }
 
 void readMLX() {
   temp = mlx.readObjectTempC();
+  Serial.println("TEMPERATURA");
+  Serial.println(temp);
+
 }
 
 // Envia dados ao Blynk
@@ -181,6 +188,7 @@ void sendToBlynk() {
 */
 
 void setup() {
+  Serial.begin(115200); //monitor serial
   initI2C();
   initSensors();
   WiFi.begin(ssid, pass);
@@ -196,5 +204,5 @@ void loop() {
   Blynk.run();
   timer.run();
   readMAX();
-  readMLX();
+  //readMLX();
 }
