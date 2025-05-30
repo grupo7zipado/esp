@@ -1,0 +1,172 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+// OLED
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Tela
+unsigned long lastSwitch = 0;
+const unsigned long screenInterval = 5000;
+bool showBPM = true;
+
+// Animação de batimento
+bool pulseActive = false;
+unsigned long pulseStart = 0;
+const unsigned long pulseDuration = 150;
+
+// Ícones animados
+const unsigned char heart_small [] PROGMEM = {
+  0b00001100, 0b00110000,
+  0b00011110, 0b01111000,
+  0b00111111, 0b11111100,
+  0b01111111, 0b11111110,
+  0b01111111, 0b11111110,
+  0b01111111, 0b11111110,
+  0b00111111, 0b11111100,
+  0b00011111, 0b11111000,
+  0b00001111, 0b11110000,
+  0b00000111, 0b11100000,
+  0b00000011, 0b11000000,
+  0b00000001, 0b10000000,
+  0b00000000, 0b00000000
+};
+
+const unsigned char heart_big [] PROGMEM = {
+  0b00011110, 0b01111000,
+  0b00111111, 0b11111100,
+  0b01111111, 0b11111110,
+  0b11111111, 0b11111111,
+  0b11111111, 0b11111111,
+  0b11111111, 0b11111111,
+  0b01111111, 0b11111110,
+  0b00111111, 0b11111100,
+  0b00011111, 0b11111000,
+  0b00001111, 0b11110000,
+  0b00000111, 0b11100000,
+  0b00000011, 0b11000000,
+  0b00000001, 0b10000000
+};
+
+const unsigned char drop_full [] PROGMEM = {
+  0b00011000,
+  0b00111100,
+  0b01111110,
+  0b11111111,
+  0b11111111,
+  0b11111111,
+  0b01111110,
+  0b00111100,
+  0b00011000,
+  0b00000000,
+  0b00011000,
+  0b00011000
+};
+
+const unsigned char drop_half [] PROGMEM = {
+  0b00011000,
+  0b00111100,
+  0b01111110,
+  0b11111100,
+  0b11110000,
+  0b11110000,
+  0b01111000,
+  0b00111100,
+  0b00011000,
+  0b00000000,
+  0b00011000,
+  0b00011000
+};
+
+const unsigned char drop_empty [] PROGMEM = {
+  0b00011000,
+  0b00111100,
+  0b01100110,
+  0b11000011,
+  0b11000011,
+  0b11000011,
+  0b01100110,
+  0b00111100,
+  0b00011000,
+  0b00000000,
+  0b00011000,
+  0b00011000
+};
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("OLED não encontrado"));
+    while (1);
+  }
+
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10, 20);
+  display.println("Inicializando...");
+  display.display();
+
+  delay(1000);
+  display.clearDisplay();
+  display.display();
+}
+
+void loop() {
+  static int beatAvg = random(60, 100);
+  static float ESpO2 = random(920, 990) / 10.0;
+
+  // Alternar tela a cada 5s
+  if (millis() - lastSwitch > screenInterval) {
+    showBPM = !showBPM;
+    lastSwitch = millis();
+    beatAvg = random(60, 100);
+    ESpO2 = random(920, 990) / 10.0;
+    pulseActive = true;
+    pulseStart = millis();
+  }
+
+  display.clearDisplay();
+
+  if (showBPM) {
+    if (pulseActive && millis() - pulseStart < pulseDuration) {
+      display.drawBitmap(0, 0, heart_big, 16, 13, SSD1306_WHITE);
+    } else {
+      display.drawBitmap(0, 0, heart_small, 16, 13, SSD1306_WHITE);
+      pulseActive = false;
+    }
+
+    display.setCursor(20, 0);
+    display.setTextSize(2);
+    display.println("BPM");
+
+    display.setTextSize(3);
+    display.setCursor(30, 35);
+    display.printf("%3d", beatAvg);
+
+  } else {
+    if (ESpO2 > 95.0) {
+      display.drawBitmap(0, 0, drop_full, 8, 12, SSD1306_WHITE);
+    } else if (ESpO2 > 90.0) {
+      display.drawBitmap(0, 0, drop_half, 8, 12, SSD1306_WHITE);
+    } else {
+      display.drawBitmap(0, 0, drop_empty, 8, 12, SSD1306_WHITE);
+    }
+
+    display.setCursor(20, 0);
+    display.setTextSize(2);
+    display.println("SpO2");
+
+    display.setTextSize(3);
+    display.setCursor(20, 35);
+    display.printf("%.1f%%", ESpO2);
+  }
+
+  display.display();
+  delay(100); // Reduz flickering
+}
