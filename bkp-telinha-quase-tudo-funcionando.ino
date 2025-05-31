@@ -60,7 +60,7 @@ String topic_sub_response_user = "response_user";
 String topic_pub_temperatura = "temperatura";
 String topic_pub_bpm = "bpm";
 String topic_pub_oxigenacao = "oxigenacao";
-
+String topic_sub_msg;
 
 unsigned long tempoAnterior = 0;
 const unsigned long intervalo = 5000; // 5 segundos
@@ -115,6 +115,34 @@ double temp = 0.0;
 double abpm = 0.0;
 #define USEFIFO
 
+// --- Estados e Bitmaps do display --- //
+// --- Estados --- //
+unsigned long tempoMensagem = 0;
+bool mostrandoMensagem = false;
+unsigned long ultimoBatimento = 0;
+bool batendo = false;
+
+// --- Bitmaps --- //
+const unsigned char epd_bitmap_gota_de_sangue [] PROGMEM = {
+  0xff, 0xff, 0xfe, 0x7f, 0xfe, 0x7f, 0xfc, 0x3f,
+  0xf8, 0x1f, 0xf0, 0x1f, 0xf0, 0x0f, 0xf0, 0x0f,
+  0xe0, 0x07, 0xe0, 0x07, 0xe0, 0x07, 0xe0, 0x07,
+  0xf0, 0x0f, 0xf0, 0x0f, 0xfc, 0x3f, 0xff, 0xff
+};
+
+const unsigned char epd_bitmap_coracao [] PROGMEM = {
+  0xff, 0xff, 0xff, 0xff, 0xc3, 0xc3, 0x80, 0x01,
+  0x80, 0x01, 0x00, 0x00, 0x80, 0x01, 0x80, 0x01,
+  0x80, 0x01, 0xc0, 0x03, 0xe0, 0x07, 0xf0, 0x0f,
+  0xfc, 0x3f, 0xfe, 0x7f, 0xff, 0xff, 0xff, 0xff
+};
+
+const unsigned char epd_bitmap_termometro [] PROGMEM = {
+  0xfe, 0x7f, 0xfc, 0x3f, 0xf9, 0x9f, 0xf9, 0x9f,
+  0xf9, 0x9f, 0xf9, 0x9f, 0xf8, 0x1f, 0xf8, 0x1f,
+  0xf8, 0x1f, 0xf8, 0x1f, 0xf2, 0x4f, 0xf0, 0x0f,
+  0xf0, 0x0f, 0xf2, 0x4f, 0xf8, 0x1f, 0xfc, 0x3f
+};
 
 /*
     FUNÇÕES DE SETUP
@@ -140,7 +168,6 @@ void setup_wifi() {
 */
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
-
 
     //LOGS TOPICO RECEBIDO
     Serial.print("Recebido topic: [");
@@ -184,10 +211,19 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     }else{
         Serial.println("topico errado AaaaaaaaaaaaaaaaaaHH");
     }
+  String msg = "";
+
+  if (strcmp(topic, topic_sub_msg.c_str()) == 0) {
+    for (int i = 0; i < length; i++) {
+      msg += (char)payload[i];
+    }
+    tempoMensagem = millis();
+    mostrandoMensagem = true;
+    displayMensagem(msg);  // ou o que você quiser fazer com a mensagem
+  }
+
     
 }
-
-
 
 /*
     reconnect_mqtt
@@ -200,6 +236,7 @@ void reconnect_mqtt() {
             Serial.println(" Conectado!");
             //SE INCREVE DO TOPICO PARA RECEBER NOVO ESPUSUARIO
             mqttClient.subscribe(topic_sub_response_user.c_str());  // Inscreve-se no tópico
+            mqttClient.subscribe(topic_sub_msg.c_str());
         } else {
             Serial.print(" Falha, código: ");
             Serial.print(mqttClient.state());
@@ -209,7 +246,7 @@ void reconnect_mqtt() {
     }
 }
 
-//TESTE BLUBLICAÇÃO
+//TESTE PUBLICAÇÃO
 void enviarPrimeiraMensagem() {
     while (!mqttClient.publish(topic_pub_request_user.c_str(), mac_address.c_str())) {
         Serial.println("Erro ao publicar. Tentando novamente em 3 segundos...");
@@ -250,6 +287,33 @@ I2C_0.setClock(100000); //altere a velocidade entre 100/400 kHz
 confMAX30102();
 mlx.begin(0x5A, &I2C_0); //inicia o sensor MLX90614
 
+}
+
+void drawHeart(float scale) {
+  int centerX = 8;
+  int centerY = 8;
+
+  for (int y = 0; y < 16; y++) {
+    for (int x = 0; x < 16; x++) {
+      if (pgm_read_byte(&epd_bitmap_coracao[y * 2 + (x / 8)]) & (1 << (7 - (x % 8)))) {
+        int dx = x - centerX;
+        int dy = y - centerY;
+        int sx = centerX + dx * scale;
+        int sy = centerY + dy * scale;
+        if (sx >= 0 && sx < 128 && sy >= 0 && sy < 64) {
+          display.drawPixel(sx, sy, WHITE);
+        }
+      }
+    }
+  }
+}
+
+String getHoraAtual() {
+  time_t now = time(nullptr);
+  struct tm* timeinfo = localtime(&now);
+  char buffer[6];
+  strftime(buffer, sizeof(buffer), "%H:%M", timeinfo);
+  return String(buffer);
 }
 
 /*
@@ -319,29 +383,55 @@ void readMAX() {
  spo2 = ESpO2;
 }
 
-
 void readMLX() {
 // --- MLX90614 --- //
  temp = mlx.readObjectTempC(); //leitura da temperatura corporal
 }
 
-void displayOled() {
+void displayOled(bool beat) {
+  display.clearDisplay();
+
+  // Hora
+  String hora = getHoraAtual();
+  display.setCursor(90, 4);
+  display.print(hora);
+
+  // Batimento
+  float scale = beat ? 0.8 : 1.0;
+  drawHeart(scale);
+
+  // BPM
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(20, 4);
+  display.print(abpm);
+  display.print("BPM");
+
+  // Oxigênio
+  display.drawBitmap(0, 20, epd_bitmap_gota_de_sangue, 16, 16, WHITE);
+  display.setCursor(20, 24);
+  display.print(spo2);
+  display.print("%");
+  // Temperatura
+  display.drawBitmap(0, 40, epd_bitmap_termometro, 16, 16, WHITE);
+  display.setCursor(20, 44);
+  display.print(temp);
+  display.print("°C");
+
+  display.display();
+}
+
+void displayMensagem(String msg) {
   display.clearDisplay();
   display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
+  display.setTextColor(WHITE);
   display.setCursor(0, 0);
-  display.print("SpO2: ");
-  display.print(spo2, 1);
-  display.println(" %");
-    
-  display.print("BPM: ");
-  display.println(abpm, 1);
-
-  display.print("Temp: ");
-  display.print(temp, 1);
-  display.println(" C");
+  display.println("MENSAGEM:");
+  display.setCursor(0, 16);
+  display.println(msg);
   display.display();
-    }
+}
+
 /*
     SISTEMA OPERACIONAL
 */
@@ -351,8 +441,11 @@ void displayOled() {
     VOID SETUP
 */
 void setup() {
+  
+
  Serial.begin(115200); //monitor serial
  setup_wifi();
+
  mqttClient.setServer(ip_broker, broker_port);
     mqttClient.setCallback(mqttCallback);
 
@@ -374,9 +467,9 @@ void setup() {
     /*
         Atualiza os valores dos topicos adicionando o mac_address e o / a eles
     */
-    topic_pub_request_user = mac_address + "/" + topic_pub_request_user;
+     topic_pub_request_user = mac_address + "/" + topic_pub_request_user;
     topic_sub_response_user = mac_address + "/" + topic_sub_response_user;
-
+    topic_sub_msg = mac_address + "/msg";
     //REVER OS TOPICOS DE DADOS E TORNA ELES DINAMICOS
     topic_pub_temperatura = mac_address + "/" + topic_pub_temperatura;
     topic_pub_bpm = mac_address + "/" + topic_pub_bpm;
@@ -388,9 +481,9 @@ void setup() {
     Serial.println("topic_pub_bpm: " + topic_pub_bpm);
     Serial.println("topic_pub_oxigenacao: " + topic_pub_oxigenacao);
 
-
+  configTime(-3 * 3600, 0, "pool.ntp.org");
   initI2C(); //inicia o barramento I2C
- //initDisplay(); //inicia o Display 
+  initDisplay(); //inicia o Display 
   initSensors(); //inicia os sensores
 }
 
@@ -407,8 +500,7 @@ void loop() {
 
     mqttClient.loop();
     
-    readMLX();
-    readMAX();
+    
 
     // Verifica se o user está vazio
     if (user == "") {
@@ -422,7 +514,8 @@ void loop() {
         }
     } else {
         unsigned long tempoAtual = millis();
-
+        readMLX();
+        readMAX();
         //displayOled();
 
         // Se passaram 5 segundos?
@@ -465,15 +558,15 @@ void loop() {
 
             doc["dados_generate"] = timeClient.getEpochTime();
 
-            String msg;
-            serializeJson(doc, msg);
+            String e;
+            serializeJson(doc, e);
 
             String topicoaaa = mac_address+ "/" + tipos[i];
             // 🚀 Verifica se a mensagem foi publicada com sucesso
-            if (mqttClient.publish(topicoaaa.c_str(), msg.c_str())) {
-            Serial.println("✅ Mensagem enviada: " + msg);
+            if (mqttClient.publish(topicoaaa.c_str(), e.c_str())) {
+            Serial.println("✅ Mensagem enviada: " + e);
             } else {
-            Serial.println("❌ ERRO ao enviar: " + msg);
+            Serial.println("❌ ERRO ao enviar: " + e);
             }
         }
        
@@ -483,7 +576,16 @@ void loop() {
         Serial.println("Usuário salvo: " + user);
     }
     
+ if (mostrandoMensagem && millis() - tempoMensagem >= 10000) {
+    mostrandoMensagem = false;
+    display.clearDisplay();
+  }
 
+  if (!mostrandoMensagem && millis() - ultimoBatimento >= 500) {
+    batendo = !batendo;
+    displayOled(batendo);
+    ultimoBatimento = millis();
+  }
     //delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
   
 }
