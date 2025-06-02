@@ -332,10 +332,17 @@ const unsigned char epd_bitmap_termometro [] PROGMEM = {
   --MAIS TRABALHO CASO A CONEXÃO CAIR CRIAR UMA TELINHA  OU COLOCAR NO CANTO DE CONEXÃO PERDIDA OU ALGO DO GENERO
 */ 
 void setup_wifi() {
+    //Serial.print(" Conectando ao Wi-Fi: ");
+    //Serial.println(ssid);
+    
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED) {
         delay(1000);
+        //Serial.print(".");
     }
+    //Serial.println("\n Wi-Fi conectado!");
+    //Serial.print(" IP: ");
+    //Serial.println(WiFi.localIP());
 }
 
 /*
@@ -353,19 +360,48 @@ void setup_wifi() {
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
-  //verifica se o topico e o correto
+    //LOGS TOPICO RECEBIDO
+    //Serial.print("Recebido topic: [");
+    //Serial.print(topic);
+    //Serial.println("]");
+
+    //LOGS TOPICO ESPERADO
+    //Serial.print("Esperado topic: [");
+    //Serial.print(topic_sub_response_user.c_str());
+    //Serial.println("]");
+    //MENSAGEM RECEBIDA
+    //Serial.print("Payload: ");
+    // for (unsigned int i = 0; i < length; i++) {
+    //     Serial.print((char)payload[i]);  // converte byte para char
+    // }
+    // Serial.println();
+
+    //verifica se o topico e o correto
     if(strcmp(topic, topic_sub_response_user.c_str()) == 0){
         //joga o payload(usuario) dentro de uma variavel
         String novoUser;
         for (int i = 0; i < length; i++) {
             novoUser += (char)payload[i];
         }
+        //Serial.println("recebeu novo usuario");
         // Salvar novo valor do usuario permanentemente
         prefs.begin("config", false);
         prefs.putString("user", novoUser);
         prefs.end();
+        //Serial.println("atualizou usuario na memoria permanente");
         // Atualiza o valor do usuário no codigo
         user = novoUser;
+        //Serial.println("atualizou na memoria de execução");
+        //Serial.println("Novo usuário salvo: " + novoUser);
+        //Serial.println("aaaaa");
+        //Serial.println("aaaaa");
+        //Serial.println("aaaaa");
+        //Serial.println("aaaaa");
+        //Serial.println("aaaaa");
+        //Serial.println("aaaaa");
+    }else{
+        //Serial.println("topico errado AaaaaaaaaaaaaaaaaaHH");
+        // COMENTAR
     }
   String msg = "";
 
@@ -394,12 +430,16 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 */
 void reconnect_mqtt() {
     while (!mqttClient.connected()) {
+        //Serial.print(" Conectando ao Broker MQTT...");
         if (mqttClient.connect(client_id)) {
+            //Serial.println(" Conectado!");
             mqttClient.subscribe(topic_sub_response_user.c_str()); 
             mqttClient.subscribe(topic_sub_msg.c_str());
         } else {
-          //USAR UM IF NO LUGAR DO WHILE E COLOCAR NUM MILLES PRA NÃO PARAR A LEITURA DO SENSOR
-          delay(5000);
+            //Serial.print(" Falha, código: ");
+            //Serial.print(mqttClient.state());
+            //Serial.println(" Tentando novamente em 5s...");
+            delay(5000);
         }
     }
 }
@@ -409,11 +449,14 @@ void reconnect_mqtt() {
   // -----[enviarPrimeiraMensagem]----- //
   Envia o Pedido do Primeiro Usuário
 */
+//TESTE PUBLICAÇÃO
 void enviarPrimeiraMensagem() {
     while (!mqttClient.publish(topic_pub_request_user.c_str(), mac_address.c_str())) {
+        //Serial.println("Erro ao publicar. Tentando novamente em 3 segundos...");
         delay(3000);
     }
 
+    //Serial.println("✅ Publicação bem-sucedida no tópico: " + topic_pub_request_user);
 }
 
 /*
@@ -434,7 +477,7 @@ void initI2C() {
 /*
   // -----[initDisplay]----- //
   Inicia o Display
-  Limpa o Display
+  Limpa o Dispaly
   Atualiza o Display
 */
 void initDisplay() {
@@ -674,6 +717,7 @@ void displayMensagem(String msg) {
 void setup() {
   
 
+ //Serial.begin(115200); //monitor serial
  setup_wifi();
 
  mqttClient.setServer(ip_broker, broker_port);
@@ -691,6 +735,8 @@ void setup() {
     user = prefs.getString("user", "");
     mac_address = WiFi.macAddress();
 
+    //Serial.println("Usuário atual: " + user);
+    //Serial.println("Mac: " + mac_address);
 
 
     /*
@@ -704,6 +750,11 @@ void setup() {
     topic_pub_bpm = mac_address + "/" + topic_pub_bpm;
     topic_pub_oxigenacao = mac_address + "/" + topic_pub_oxigenacao;
 
+    //Serial.println("topic_pub_request_user: " + topic_pub_request_user);
+    //Serial.println("topic_sub_response_user: " + topic_sub_response_user);
+    //Serial.println("topic_pub_temperatura: " + topic_pub_temperatura);
+    //Serial.println("topic_pub_bpm: " + topic_pub_bpm);
+    //Serial.println("topic_pub_oxigenacao: " + topic_pub_oxigenacao);
 
   initI2C(); //inicia o barramento I2C
   initDisplay(); //inicia o Display 
@@ -744,6 +795,7 @@ void loop() {
     // Verifica se o user está vazio
     if (user == "") {
 
+        //Serial.println("Usuário não definido.");
         static bool primeiraMensagemEnviada = false;
         //pede um novo usuário
         if (!primeiraMensagemEnviada) {
@@ -759,28 +811,40 @@ void loop() {
         // Se passaram 5 segundos?
         if (tempoAtual - tempoAnterior >= intervalo) {
             tempoAnterior = tempoAtual;
+            Serial.println("Executando a cada 5 segundos");
             // Aqui você coloca o que deseja fazer a cada 5 segundos
             for (int i = 0; i < 3; i++) {
             String valor;
             
             if (strcmp(tipos[i], "temperatura") == 0) {
+                //Serial.println("na leitura de temperatura");
                 valor = String(temp, 2); // duas casas decimais
+                //Serial.println("fim da leitura");
+                //Serial.println(valor);
 
             } else if (strcmp(tipos[i], "oxigenacao") == 0) {
                 valor = String(spo2, 2);
+                //Serial.println(valor);
                 
             } else if (strcmp(tipos[i], "bpm") == 0) {
                 valor = String(abpm);
+                //Serial.println(valor);
 
+                // valor = String(random(60, 120));
             }
 
+                // Serial.println("envio dados");
 
             StaticJsonDocument<200> doc;
+                //Serial.println("user");
 
             doc["use_id"] = user;
+                // Serial.println("tipo");
 
             doc["dados_tipo"] = tipos[i];
+                // Serial.println("valor");
             doc["dados_valor"] = valor;
+                // Serial.println("tempo");
 
             doc["dados_generate"] = timeClient.getEpochTime();
 
@@ -790,13 +854,16 @@ void loop() {
             String topicoaaa = mac_address+ "/" + tipos[i];
             // 🚀 Verifica se a mensagem foi publicada com sucesso
             if (mqttClient.publish(topicoaaa.c_str(), e.c_str())) {
+            //Serial.println("✅ Mensagem enviada: " + e);
             } else {
-              //VERIFICAR
+            //Serial.println("❌ ERRO ao enviar: " + e);
             }
         }
        
 
+        //delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
       }
+        Serial.println("Usuário salvo: " + user);
     }
     
  if (mostrandoMensagem && millis() - tempoMensagem >= 10000) {
@@ -809,4 +876,6 @@ void loop() {
     displayOled(batendo);
     ultimoBatimento = millis();
   }
+    //delay(2000);  // Pequeno delay para evitar problemas com envio muito rápido
+  
 }
