@@ -26,17 +26,7 @@
   ╚════════════════════════════════════════════════════════════╝
 */
 
-/*
-  RECADOS
 
-  ⚙️ CONFIGURAÇÕES DE REDE
-
-  Altere as variáveis abaixo conforme sua rede:
-  - BROKER_IP     → IP do broker MQTT
-  - BROKER_PORT   → Porta do broker
-  - SSID          → Nome da rede Wi-Fi
-  - PASSWORD      → Senha do Wi-Fi
-*/
 
 /*
   BIBLIOTECAS
@@ -44,7 +34,7 @@
 
 
 /*
-  Configuração de I2C (Inter-Integrated Circuit)
+  Configuração de I2C(Inter-Integrated Circuit)
 */
 #include <Wire.h> 
 
@@ -59,7 +49,7 @@
 #include <Preferences.h> 
 
 /*
-  Conexão NTP (Network Time Protocol)
+  Conexão NTP(Network Time Protocol)
 */
 #include <NTPClient.h>
 
@@ -95,14 +85,14 @@
 #include <Adafruit_GFX.h>
 
 /*
-  Biblioteca do MQTT (Message Queuing Telemetry Transport)
+  Biblioteca do MQTT(Message Queuing Telemetry Transport)
 */
 #include <PubSubClient.h>
 
 /*
   Biblioteca de Formato JSON para IoT
-  JSON (JavaScript Object Notation)
-  IoT (Internet of Things)
+  JSON(JavaScript Object Notation)
+  IoT(Internet of Things)
 */
 #include <ArduinoJson.h>
 
@@ -122,7 +112,7 @@ Preferences prefs;
 
 /*
   // -----[WiFi]----- //
-  Permite Conexões Wireless Possibilitando comunicar-se pela internet ou rede local
+  Permite Conexões Wireless Possibilitando comunicar-se pela internet ou rede local (LAN)
 */
 WiFiClient espClient;
 
@@ -175,10 +165,16 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil
 
 
 
+
+
+
 /*
   VARIÁVEIS DE GLOBAIS
 */
 
+/*
+  VARIÁVEIS DE SETUP
+*/
 
 /*
   // -----[Wifi]----- //
@@ -284,34 +280,32 @@ double temp = 0.0;
 double abpm = 0.0;
 #define USEFIFO
 
-
 /*
-  // -----[Display]----- //
-  Estados do Display
-  Bitmaps
+  CHEGUEI AQUI VERIFICAR DEPOIS
 */
 
+// --- Estados e Bitmaps do display --- //
 // --- Estados --- //
 unsigned long tempoMensagem = 0;
 bool mostrandoMensagem = false;
 unsigned long ultimoBatimento = 0;
 bool batendo = false;
 
-// --- Gota de Sangue (SpO2) --- //
+// --- Bitmaps --- //
 const unsigned char epd_bitmap_gota_de_sangue [] PROGMEM = {
   0xff, 0xff, 0xfe, 0x7f, 0xfe, 0x7f, 0xfc, 0x3f,
   0xf8, 0x1f, 0xf0, 0x1f, 0xf0, 0x0f, 0xf0, 0x0f,
   0xe0, 0x07, 0xe0, 0x07, 0xe0, 0x07, 0xe0, 0x07,
   0xf0, 0x0f, 0xf0, 0x0f, 0xfc, 0x3f, 0xff, 0xff
 };
-// --- Coração (BPM) --- //
+
 const unsigned char epd_bitmap_coracao [] PROGMEM = {
   0xff, 0xff, 0xff, 0xff, 0xc3, 0xc3, 0x80, 0x01,
   0x80, 0x01, 0x00, 0x00, 0x80, 0x01, 0x80, 0x01,
   0x80, 0x01, 0xc0, 0x03, 0xe0, 0x07, 0xf0, 0x0f,
   0xfc, 0x3f, 0xfe, 0x7f, 0xff, 0xff, 0xff, 0xff
 };
-// --- Termômetro (Temperatura) --- //
+
 const unsigned char epd_bitmap_termometro [] PROGMEM = {
   0xfe, 0x7f, 0xfc, 0x3f, 0xf9, 0x9f, 0xf9, 0x9f,
   0xf9, 0x9f, 0xf9, 0x9f, 0xf8, 0x1f, 0xf8, 0x1f,
@@ -322,15 +316,7 @@ const unsigned char epd_bitmap_termometro [] PROGMEM = {
 /*
     FUNÇÕES DE SETUP
 */
-/*
-  // -----[setup_wifi]----- //
-  Função para conectar ao Wi-Fi
-  
-  VERIFICAR
-  --COLOCAR UMA VERIFICAÇÃO PARA VERIFICAR A CONEXÃO WIFI ESTA ATIVA E SE ELA CAIR TENTAR CONECTAR DNV
-  --RANCAR OS LOGS
-  --MAIS TRABALHO CASO A CONEXÃO CAIR CRIAR UMA TELINHA  OU COLOCAR NO CANTO DE CONEXÃO PERDIDA OU ALGO DO GENERO
-*/ 
+// Função para conectar ao Wi-Fi
 void setup_wifi() {
     Serial.print(" Conectando ao Wi-Fi: ");
     Serial.println(ssid);
@@ -346,16 +332,8 @@ void setup_wifi() {
 }
 
 /*
-  // -----[mqttCallback]----- //
-  Trata Mensagens Recebidas Via MQTT
-  TOPIC - Tópico em que a Mensagem foi Recebida
-  PAYLOAD - Conteudo da Mensagem
-  LENGTH - Tamanho da Mensagem em Bytes
-
-  
-  VERIFICAR 
-  TIRAR OS PRINTS 
-  CRIAR FUNÇÃO  DE MENSAGEM RECEBIDA E DE USUÁRIO RECEBIDO E SO DEIXAR O IF AI DENTRO E CHAMAR A FUNÇÃO
+    mqttCallback
+        função responsavel por receber todo mensagens enviadas aos topicos que o esp se inscreveu 
 */
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -416,23 +394,17 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     
 }
 
-
 /*
-  // -----[reconnect_mqtt]----- //
-  Verifica se a Conexão Esta Ativa
-  Conecta ao BrokerMQTT 
-  Subscreve nos Tópicos response_user e msg
-
-  VERIFICAR 
-  TIRAR O DELAY DE RECONEXÃO E COLOCAR UM MILIS PARA TENTAR A CADA 5 SEC 
-  PARA AS LEITURAR CONTINUAREM SENDO FEITAS 
+    reconnect_mqtt
+    Conecta ao brokerMQTT e verifica se a conexão esta ativa senão tenta conectar
 */
 void reconnect_mqtt() {
     while (!mqttClient.connected()) {
         Serial.print(" Conectando ao Broker MQTT...");
         if (mqttClient.connect(client_id)) {
             Serial.println(" Conectado!");
-            mqttClient.subscribe(topic_sub_response_user.c_str()); 
+            //SE INCREVE DO TOPICO PARA RECEBER NOVO ESPUSUARIO
+            mqttClient.subscribe(topic_sub_response_user.c_str());  // Inscreve-se no tópico
             mqttClient.subscribe(topic_sub_msg.c_str());
         } else {
             Serial.print(" Falha, código: ");
@@ -443,11 +415,6 @@ void reconnect_mqtt() {
     }
 }
 
-
-/*
-  // -----[enviarPrimeiraMensagem]----- //
-  Envia o Pedido do Primeiro Usuário
-*/
 //TESTE PUBLICAÇÃO
 void enviarPrimeiraMensagem() {
     while (!mqttClient.publish(topic_pub_request_user.c_str(), mac_address.c_str())) {
@@ -458,76 +425,39 @@ void enviarPrimeiraMensagem() {
     Serial.println("✅ Publicação bem-sucedida no tópico: " + topic_pub_request_user);
 }
 
-/*
-  // -----[initI2C]----- //
-  Define as Pinos SDA e SCL
-  Inicia o Barramento I2C 
-
-  VERIFICAR 
-  TIRAR O SEGUNDO BARAMENTO
-*/
 void initI2C() {
   
     I2C_0.begin(8, 9); //I2C 0 para o MAX30102 e Display Oled //TEMPERATURA
     // I2C_1.begin(6, 7); //I2C 1 para o MLX90614
 }
 
-
-/*
-  // -----[initDisplay]----- //
-  Inicia o Display
-  Limpa o Dispaly
-  Atualiza o Display
-*/
 void initDisplay() {
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+display.begin(SSD1306_SWITCHCAPVCC, 0x3C); //inicia o display
   display.clearDisplay();
   display.display();
 }
 
-
-/*
-  // -----[confMAX30102]----- //
-  Configura o Sensor MAX30102/30105
-
-
-  VERIFICAR PRA MIM FAZENDO A BOA
-
-*/
 void confMAX30102() {
-
+// variáveis de hardware do sensor
   byte ledBrightness = 0x7F; //intensidade do led
   byte sampleAverage = 4; //amostras para média 
   byte ledMode = 3; //modo do led
   int sampleRate = 200; //frequência de amostragem (Hz)
   int pulseWidth = 411; //duração de pulso do led
   int adcRange = 16384; // faixa de leitura adc
-  
+
+
   particleSensor.setup(ledBrightness, sampleAverage, ledMode, sampleRate, pulseWidth, adcRange);
 }
 
-
-/*
-  // -----[initSensors]----- //
-  Inicia o Sensor de Oxímetro no Barramento I2C_0
-  Inicia o Sensor de Temperatura no Barramento I2C_0
-  Envia as Configurações do Oxímetro
-  Define a Frequência de Comunicação do Barramento I2C
-*/
 void initSensors() {
-  particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
-  I2C_0.setClock(100000); //altere a velocidade entre 100/400 kHz
-  confMAX30102();
-  mlx.begin(0x5A, &I2C_0); //inicia o sensor MLX90614
+particleSensor.begin(I2C_0); //inicia sensor MAX30102 (velocidade padrão 100khz) 
+I2C_0.setClock(100000); //altere a velocidade entre 100/400 kHz
+confMAX30102();
+mlx.begin(0x5A, &I2C_0); //inicia o sensor MLX90614
 
 }
 
-
-/*
-  // -----[drawHeart]----- //
-
-  QUEM FEZ COMENTA AI RESUMO DOQUE FAZ 
-*/
 void drawHeart(float scale) {
   int centerX = 8;
   int centerY = 8;
@@ -547,10 +477,6 @@ void drawHeart(float scale) {
   }
 }
 
-/*
-  // -----[drawHeart]----- //
-  Retorna a Hora e Minutos (HH:MM)
-*/
 String getHoraAtual() {
   time_t now = time(nullptr);
   struct tm* timeinfo = localtime(&now);
@@ -559,15 +485,10 @@ String getHoraAtual() {
   return String(buffer);
 }
 
-
 /*
     FUNÇÕES DE LEITURA
 */
 
-/*
-  // -----[readMAX]----- //
-  Faz a Leitura e Cálculo do SpO2 e BPM
-*/
 void readMAX() {
  uint32_t ir, red;
  double fred, fir;
@@ -631,18 +552,11 @@ void readMAX() {
  spo2 = ESpO2;
 }
 
-/*
-  // ------[readMLX]----- //
-  Faz a Leitura da Temperatura
-*/
 void readMLX() {
+// --- MLX90614 --- //
  temp = mlx.readObjectTempC(); //leitura da temperatura corporal
 }
 
-/*
-  // ------[displayOled]----- //
-  Cria o Cérebro Visual do Projeto
-*/
 void displayOled(bool beat) {
   display.clearDisplay();
 
@@ -676,11 +590,6 @@ void displayOled(bool beat) {
   display.display();
 }
 
-
-/*
-  // ------[displayMensagem]----- //
-  Cria Display para o Evento de Mensagem
-*/
 void displayMensagem(String msg) {
   display.clearDisplay();
   display.setTextSize(1);
@@ -698,20 +607,7 @@ void displayMensagem(String msg) {
 
 
 /*
-  VOID SETUP
-  // ------[setup]----- //
-  Inicia o Wifi
-  Configura a Hora Interna do Esp
-  Atualisa para o Usuário Salvo
-  Captura o Mac Address do Esp
-  Inicia as Funções de Inicialização dos Sensores, I2C e Display
-
-  VERIFICAR
-  TIRAR O SERIAL
-  VERIFICA O NPT PRA FAZER O HORARIO INTERNO DO ESP FICAR CORETO
-  PROVAVELMENTE REMOVER O NPT CLIENT E USAR SO O CONFIGTIME
-  DESATIVAR O RESET DE USUARIO .remove()
-  DEIXAR OS TOPICOS DINAMICOS
+    VOID SETUP
 */
 void setup() {
   
@@ -724,7 +620,6 @@ void setup() {
 
     timeClient.begin();
     timeClient.update();
-    configTime(-3 * 3600, 0, "pool.ntp.org");
 
      // Abrir namespace "config" no modo leitura/escrita
     prefs.begin("config", false);
@@ -755,6 +650,7 @@ void setup() {
     Serial.println("topic_pub_bpm: " + topic_pub_bpm);
     Serial.println("topic_pub_oxigenacao: " + topic_pub_oxigenacao);
 
+  configTime(-3 * 3600, 0, "pool.ntp.org");
   initI2C(); //inicia o barramento I2C
   initDisplay(); //inicia o Display 
   initSensors(); //inicia os sensores
@@ -763,27 +659,11 @@ void setup() {
 /*
     VOID LOOP
 */
+    const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
 
-/*
-  VERIFICAR 
-  DEPOIS ARRANCAR ISSO E DEIXAR OS TOPICOS DINAMICOS 
-*/
-const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
-
-/*
-  // ------[loop]----- //
-  Verifica a Conexão com broker
-  Mantem a Conexão Viva e Processa Mensagens
-  Verifica a Existência do Usuário
-
-  VERIVICAR
-  Faz a  leitura dos sinais vitais e envia os dados
-  FAZER UM FUNÇÃO DE RECONECT DO WIFI SE ELE NÃO OCNSEGUIR SE CONECTAR NO BROKER IF PRA VE SE TAR CONECTADO NO WIFI SE NÃO TENTA CONECTAR
-
-*/
 void loop() {
 
-    if (!mqttClient.connected()) {
+      if (!mqttClient.connected()) {
         reconnect_mqtt();  // sua função de reconexão
     }
 

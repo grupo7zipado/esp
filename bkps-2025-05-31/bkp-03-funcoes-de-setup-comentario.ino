@@ -560,14 +560,14 @@ String getHoraAtual() {
 }
 
 
+//
+//PAREI AQUI
+//
+
 /*
     FUNÇÕES DE LEITURA
 */
 
-/*
-  // -----[readMAX]----- //
-  Faz a Leitura e Cálculo do SpO2 e BPM
-*/
 void readMAX() {
  uint32_t ir, red;
  double fred, fir;
@@ -631,18 +631,11 @@ void readMAX() {
  spo2 = ESpO2;
 }
 
-/*
-  // ------[readMLX]----- //
-  Faz a Leitura da Temperatura
-*/
 void readMLX() {
+// --- MLX90614 --- //
  temp = mlx.readObjectTempC(); //leitura da temperatura corporal
 }
 
-/*
-  // ------[displayOled]----- //
-  Cria o Cérebro Visual do Projeto
-*/
 void displayOled(bool beat) {
   display.clearDisplay();
 
@@ -676,11 +669,6 @@ void displayOled(bool beat) {
   display.display();
 }
 
-
-/*
-  // ------[displayMensagem]----- //
-  Cria Display para o Evento de Mensagem
-*/
 void displayMensagem(String msg) {
   display.clearDisplay();
   display.setTextSize(1);
@@ -698,20 +686,7 @@ void displayMensagem(String msg) {
 
 
 /*
-  VOID SETUP
-  // ------[setup]----- //
-  Inicia o Wifi
-  Configura a Hora Interna do Esp
-  Atualisa para o Usuário Salvo
-  Captura o Mac Address do Esp
-  Inicia as Funções de Inicialização dos Sensores, I2C e Display
-
-  VERIFICAR
-  TIRAR O SERIAL
-  VERIFICA O NPT PRA FAZER O HORARIO INTERNO DO ESP FICAR CORETO
-  PROVAVELMENTE REMOVER O NPT CLIENT E USAR SO O CONFIGTIME
-  DESATIVAR O RESET DE USUARIO .remove()
-  DEIXAR OS TOPICOS DINAMICOS
+    VOID SETUP
 */
 void setup() {
   
@@ -724,7 +699,6 @@ void setup() {
 
     timeClient.begin();
     timeClient.update();
-    configTime(-3 * 3600, 0, "pool.ntp.org");
 
      // Abrir namespace "config" no modo leitura/escrita
     prefs.begin("config", false);
@@ -755,6 +729,7 @@ void setup() {
     Serial.println("topic_pub_bpm: " + topic_pub_bpm);
     Serial.println("topic_pub_oxigenacao: " + topic_pub_oxigenacao);
 
+  configTime(-3 * 3600, 0, "pool.ntp.org");
   initI2C(); //inicia o barramento I2C
   initDisplay(); //inicia o Display 
   initSensors(); //inicia os sensores
@@ -763,24 +738,8 @@ void setup() {
 /*
     VOID LOOP
 */
+    const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
 
-/*
-  VERIFICAR 
-  DEPOIS ARRANCAR ISSO E DEIXAR OS TOPICOS DINAMICOS 
-*/
-const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
-
-/*
-  // ------[loop]----- //
-  Verifica a Conexão com broker
-  Mantem a Conexão Viva e Processa Mensagens
-  Verifica a Existência do Usuário
-
-  VERIVICAR
-  Faz a  leitura dos sinais vitais e envia os dados
-  FAZER UM FUNÇÃO DE RECONECT DO WIFI SE ELE NÃO OCNSEGUIR SE CONECTAR NO BROKER IF PRA VE SE TAR CONECTADO NO WIFI SE NÃO TENTA CONECTAR
-
-*/
 void loop() {
 
     if (!mqttClient.connected()) {
