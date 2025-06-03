@@ -185,7 +185,6 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil
   SSID - da Rede Wifi
   PASSWORD - Senha da Rede Wifi
 */
-,0
 // const char* ssid = "777zip";
 // const char* password = "R125redes";
 
@@ -718,7 +717,7 @@ void sistemaOperacional(){
 
             String topico = mac_address+ "/" + tipos[i];
             // 🚀 Verifica se a mensagem foi publicada com sucesso
-            mqttClient.publish(topico.c_str(), e.c_str())
+            mqttClient.publish(topico.c_str(), e.c_str());
         }
       }
     }
