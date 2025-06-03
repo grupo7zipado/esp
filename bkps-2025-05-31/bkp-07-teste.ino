@@ -61,8 +61,9 @@
 /*
   Conexão NTP (Network Time Protocol)
 */
-#include <NTPClient.h>
+// #include <NTPClient.h>
 
+#include <time.h>
 /*
   Biblioteca do Sensor Oxímetro
 */
@@ -170,8 +171,8 @@ Adafruit_SSD1306 display(128, 64, &I2C_0, -1);
   NÃO SEI COMO TA USANDO SE TA USANDO AQUI CHAMDNO LA EMBAIXO
 */
 // Configuração do NTP
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil)
+// WiFiUDP ntpUDP;
+// NTPClient timeClient(ntpUDP, "pool.ntp.org", -3 * 3600, 60000); // UTC-3 (Brasil)
 
 
 
@@ -709,7 +710,8 @@ void sistemaOperacional(){
             doc["use_id"] = user;
             doc["dados_tipo"] = tipos[i];
             doc["dados_valor"] = valor;
-            doc["dados_generate"] = timeClient.getEpochTime();
+            // doc["dados_generate"] = timeClient.getEpochTime();
+            doc["dados_generate"] = 1748979569;
 
             String e;
             serializeJson(doc, e);
@@ -756,8 +758,8 @@ void setup() {
   mqttClient.setServer(ip_broker, broker_port);
   mqttClient.setCallback(mqttCallback);
 
-  timeClient.begin();
-  timeClient.update();
+  // timeClient.begin();
+  // timeClient.update();
   configTime(-3 * 3600, 0, "pool.ntp.org");
 
   // Abrir namespace "config" no modo leitura/escrita
