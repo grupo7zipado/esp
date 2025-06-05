@@ -8,11 +8,14 @@
 #include <Preferences.h> 
 
 // Definições da rede Wi-Fi
-const char* ssid = "TP-Link_0486";
-const char* password = "46179951";
-
+// const char* ssid = "TP-Link_0486";
+// const char* password = "46179951";
+const char* ssid = "777zip";
+const char* password = "R125redes";
 // Definições do Broker MQTT
-const char* mqtt_broker = "192.168.1.105";  // Ou IP do seu broker local
+// const char* mqtt_broker = "192.168.1.105";  // Ou IP do seu broker local
+const char* mqtt_broker = "10.67.23.44";  // Ou IP do seu broker local
+
 const int mqtt_port = 1883;
 const char* mqtt_client_id = "ESP32_MQTT";
 const char* mqtt_topic_sub = "esp32/teste";   // Tópico para inscrição
