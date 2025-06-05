@@ -207,7 +207,7 @@ const char* password = "R125redes";
 */
 const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
 const int broker_port = 1883;
-const char* client_id = "esp32_00:14:22:01:23:45";
+String client_id;
 
 
 /*
@@ -217,11 +217,6 @@ const char* client_id = "esp32_00:14:22:01:23:45";
   REQUEST_USER - Requisição de Usuário
   RESPONSE_USER - Recebe Novo Usuário
   MSG - Recebe Mensagens
-
-
-  VERIFICAR 
-  CRIAR DADOS E DEIXAR OS 3 TOPICOS DINAMICOS
-  SO DECLARAR AS VARIAVEIS AQUI 
 */
 String topic_pub_request_user;
 String topic_sub_response_user;
@@ -240,17 +235,10 @@ String mac_address;
 String user;
 
 /*
-  VERIFICAR 
-  DEPOIS ARRANCAR ISSO E DEIXAR OS TOPICOS DINAMICOS 
+  // -----[Dados]----- //
 */
 const char* tipos[] = { "temperatura", "oxigenacao", "bpm" };
 
-
-/*
-  VERIFICAR
-  FAZENDO FAVOR
-  PIOR QUE ACHO QUE FUI EU
-*/
 unsigned long tempoAnterior = 0;
 const unsigned long intervalo = 5000; // 5 segundos
 
@@ -328,11 +316,6 @@ const unsigned char epd_bitmap_termometro [] PROGMEM = {
 /*
   // -----[setup_wifi]----- //
   Função para conectar ao Wi-Fi
-  
-  VERIFICAR
-  --COLOCAR UMA VERIFICAÇÃO PARA VERIFICAR A CONEXÃO WIFI ESTA ATIVA E SE ELA CAIR TENTAR CONECTAR DNV
-  --RANCAR OS LOGS
-  --MAIS TRABALHO CASO A CONEXÃO CAIR CRIAR UMA TELINHA  OU COLOCAR NO CANTO DE CONEXÃO PERDIDA OU ALGO DO GENERO
 */ 
 void setup_wifi() {
     WiFi.begin(ssid, password);
@@ -347,11 +330,6 @@ void setup_wifi() {
   TOPIC - Tópico em que a Mensagem foi Recebida
   PAYLOAD - Conteudo da Mensagem
   LENGTH - Tamanho da Mensagem em Bytes
-
-  
-  VERIFICAR 
-  TIRAR OS PRINTS 
-  CRIAR FUNÇÃO  DE MENSAGEM RECEBIDA E DE USUÁRIO RECEBIDO E SO DEIXAR O IF AI DENTRO E CHAMAR A FUNÇÃO
 */
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
@@ -390,18 +368,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   Verifica se a Conexão Esta Ativa
   Conecta ao BrokerMQTT 
   Subscreve nos Tópicos response_user e msg
-
-  VERIFICAR 
-  TIRAR O DELAY DE RECONEXÃO E COLOCAR UM MILIS PARA TENTAR A CADA 5 SEC 
-  PARA AS LEITURAR CONTINUAREM SENDO FEITAS 
 */
 void reconnect_mqtt() {
     while (!mqttClient.connected()) {
-        if (mqttClient.connect(client_id)) {
+        if (mqttClient.connect(client_id.c_str())) {
             mqttClient.subscribe(topic_sub_response_user.c_str()); 
             mqttClient.subscribe(topic_sub_msg.c_str());
         } else {
-          //USAR UM IF NO LUGAR DO WHILE E COLOCAR NUM MILLES PRA NÃO PARAR A LEITURA DO SENSOR
           delay(5000);
         }
     }
@@ -423,14 +396,9 @@ void enviarPrimeiraMensagem() {
   // -----[initI2C]----- //
   Define as Pinos SDA e SCL
   Inicia o Barramento I2C 
-
-  VERIFICAR 
-  TIRAR O SEGUNDO BARAMENTO
 */
 void initI2C() {
-  
-    I2C_0.begin(8, 9); //I2C 0 para o MAX30102 e Display Oled //TEMPERATURA
-    // I2C_1.begin(6, 7); //I2C 1 para o MLX90614
+  I2C_0.begin(8, 9); //I2C 0 para o MAX30102 e Display Oled //TEMPERATURA
 }
 
 
@@ -694,7 +662,7 @@ void setup() {
   // Ver se já existe valor salvo
   user = prefs.getString("user", "");
   mac_address = WiFi.macAddress();
-
+  client_id = "ESP_"+ mac_address; 
   atualizarTopicos();
   initI2C(); //inicia o barramento I2C
   initDisplay(); //inicia o Display 
