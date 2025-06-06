@@ -209,7 +209,7 @@ const int piezoPin = 10;
   TEM QUE SER UNICO AGEITAR URGENTE
   CLIENT_ID - Indentificador Único de Conexão com Broker
 */
-const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
+const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
 const int broker_port = 1883;
 String client_id;
 
@@ -513,7 +513,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     tempoMensagem = millis();
     mostrandoMensagem = true;
     // LIGA O BUZER 
-    digitalWrite(piezoPin, HIGH);
+    tone(piezoPin, 100);
     displayMensagem(msg);  // ou o que você quiser fazer com a mensagem
   }
 
@@ -916,6 +916,7 @@ void loop() {
     
   if (mostrandoMensagem && millis() - tempoMensagem >= 10000) {
     // DESLIGA O BUZER AQUI
+    noTone(piezoPin);
     mostrandoMensagem = false;
     display.clearDisplay();
   }
