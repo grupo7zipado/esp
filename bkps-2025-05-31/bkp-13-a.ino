@@ -175,7 +175,7 @@ const char* password = "R125redes";
 // const char* password = "46179951";
 
 // Definições do Broker MQTT
-// const char* ip_broker = "192.168.1.105";  // Ou IP do seu broker local
+// const char* ip_broker = "192.168.1.105.";  // Ou IP do seu broker local
 
 // -----[piezo]----- //
 const int buzzerPin = 10;  
@@ -190,7 +190,7 @@ int durations[] = { 150, 100, 150, 100, 300 };
   BROKER_PORT - Porta do Serviço do Broker
   CLIENT_ID - Indentificador Único de Conexão com Broker
 */
-const char* ip_broker = "10.67.23.26";  // Ou IP do seu broker local
+const char* ip_broker = "10.67.23.44";  // Ou IP do seu broker local
 const int broker_port = 1883;
 String client_id;
 
@@ -817,7 +817,7 @@ void setup() {
     delay(4000); // Tempo que a logo fica na tela (4 segundos)
     display.clearDisplay();
     display.display();
-    pinMode(piezoPin, OUTPUT);
+    pinMode(buzzerPin, OUTPUT);
 }
 /*
     VOID LOOP
