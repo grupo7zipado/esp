@@ -1,0 +1,38 @@
+🔌 O que é um Broker MQTT?
+    Um broker MQTT é o componente central de um sistema baseado no protocolo MQTT. Ele atua como um servidor de mensagens, sendo responsável por receber, filtrar, autenticar e encaminhar mensagens entre dispositivos conectados.
+
+📡 Para que serve um Broker MQTT?
+    Antes de tudo, é importante entender brevemente o que é o protocolo MQTT (Message Queuing Telemetry Transport):
+        ➡️ É um protocolo leve de mensagens publicado/assinado (publish/subscribe), ideal para comunicação entre dispositivos IoT.
+        ➡️ Ele foi projetado para conexões instáveis ou com pouca largura de banda, como em sensores remotos.
+
+    Dentro desse modelo:
+
+        Dispositivos publicam dados em tópicos específicos
+
+        Outros dispositivos ou aplicações assinam esses tópicos para receber os dados
+        🧠 O broker é quem gerencia essa troca, sendo o “cérebro” da rede MQTT.
+
+⚙️ Como funciona um Broker MQTT?
+
+    Dispositivos conectam ao broker via protocolo MQTT (normalmente na porta 1883).
+
+    Um dispositivo publica uma mensagem em um tópico (ex: esp32/bpm).
+
+    O broker recebe essa mensagem.
+
+    O broker encaminha a mensagem a todos que estão inscritos nesse tópico.
+
+    Esse modelo desacopla totalmente quem envia e quem recebe, o que aumenta a flexibilidade do sistema.
+
+🧪 Como foi utilizado no projeto
+
+    🔍 Função no projeto
+        O broker MQTT foi utilizado como uma ponte de comunicação entre o ESP32 e o servidor web, permitindo que os dados de sinais vitais — como batimentos cardíacos, oxigenação e temperatura corporal — fossem transmitidos em tempo real, além de ser o responsável por registrar diretamente os dados recebidos no banco de dados .
+
+    🌐 Acesso via WebSocket (WS)
+        A aplicação web precisava receber os dados em tempo real. Para isso, foi utilizado WebSocket, que permite comunicação contínua e bidirecional com o broker.
+        Através de bibliotecas como mqtt.js, a interface foi conectada diretamente ao broker e assinou os mesmos tópicos, possibilitando a exibição instantânea dos dados na tela.
+
+    🖥️ Broker utilizado
+        O broker utilizado foi o Aedes, uma implementação MQTT leve baseada em Node.js, ideal para integração com aplicações JavaScript e bancos de dados.
