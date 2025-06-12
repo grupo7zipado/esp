@@ -69,12 +69,9 @@
 #include "MAX30105.h" 
 
 /*
-  VERIFICAR 
-  USO 
-  OQUE FAZ 
-  SE PRESCISA
+  Biblioteca de Cálculo BPM e Oxigenação
 */
-#include "heartRate.h" //processamento de BPM?Oxigenação
+#include "heartRate.h" 
 
 /*
   Biblioteca do Sensor de Temperatura

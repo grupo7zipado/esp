@@ -1,0 +1,117 @@
+🤖 Parte ESP32 (Firmware)
+
+    Essa parte roda diretamente no ESP32 e é responsável por:
+
+    Ler os dados dos sensores (temperatura, batimentos e oxigenação),
+
+    Exibir essas informações no display OLED,
+
+    Conectar-se ao Wi-Fi,
+
+    Enviar os dados via MQTT para o broker.
+
+
+📦 Bibliotecas Utilizadas
+
+    Biblioteca	
+        Função no Projeto
+    
+    <Wire.h>	
+        Habilita a comunicação via barramento I2C, utilizado para conectar os sensores e o display ao ESP32.
+    <WiFi.h>	
+        Responsável por conectar o ESP32 à rede Wi-Fi, permitindo envio dos dados para o broker MQTT.
+    <Preferences.h>	
+        Permite armazenar dados persistentes na memória flash, como o usuário, mesmo após reinicialização.
+    <time.h>	
+        Utilizada para sincronizar o horário via NTP (Network Time Protocol), permitindo enviar dados com timestamp correto.
+    "MAX30105.h"	
+        Controla o sensor MAX30102/30105, responsável por ler batimentos cardíacos e oxigenação do sangue (SpO₂).
+    "heartRate.h"	
+        Biblioteca complementar ao MAX3010x, usada para processar os sinais e calcular o BPM e o nível de SpO₂.
+    <Adafruit_MLX90614.h>	
+        Controla o sensor de temperatura sem contato MLX90614, utilizado para medir a temperatura corporal.
+    <Adafruit_SSD1306.h>	
+        Usada para controlar o display OLED, onde os dados vitais são exibidos localmente no dispositivo.
+    <PubSubClient.h>	
+        Implementa o protocolo MQTT, permitindo que o ESP32 publique os dados lidos no broker em tempo real.
+    <ArduinoJson.h>	
+        Usada para formatar os dados em JSON, facilitando o envio estruturado dos sinais vitais via MQTT para o backend.
+
+
+
+
+🖥️ Parte Web (Frontend)
+    Essa é a interface do sistema de monitoramento de sinais vitais, feita em React. É onde os dados de temperatura, batimentos cardíacos e oxigenação recebidos do ESP32 via MQTT são apresentados visualmente ao usuário. A interface consome os dados enviados pelo broker e pela API, exibindo gráficos e dados em tempo real.
+
+
+📦 Bibliotecas Utilizadas
+
+    Biblioteca	Versão	
+        Função no Projeto
+        
+    axios	^1.8.1	
+        Cliente HTTP para se comunicar com a API REST. É usado para buscar dados do banco de dados via backend. Ex: listar históricos.
+    lucide-react	^0.511.0	
+        Biblioteca de ícones em SVG para React. Usada para melhorar a interface, com ícones representando temperatura, batimentos, etc.
+    mqtt	^5.10.4	
+        Cliente MQTT em JavaScript. Usado para se conectar diretamente ao broker Aedes via WebSocket e receber os dados em tempo real.
+    react	^19.0.0	
+        Biblioteca base para construir a interface do usuário com componentes reutilizáveis.
+    react-dom	^19.0.0	
+        Responsável por renderizar os componentes React na página HTML.
+    recharts	^2.15.1	
+        Biblioteca de gráficos baseada em SVG. Exibe os dados de temperatura, BPM e SpO₂ em forma de gráficos de linha e área.
+    sweetalert2	^11.21.0	
+        Biblioteca de alertas bonitos e personalizáveis. Usada para exibir mensagens de confirmação, sucesso, erro ou alertas visuais ao usuário, como "Dados enviados com sucesso" ou "Erro ao carregar informações".
+
+
+
+
+🔧 Parte API (Backend)
+    Essa é a camada de aplicação responsável por fornecer uma interface REST para o frontend. Ela não se comunica diretamente com o ESP32 — sua função é consultar e armazenar dados no banco de dados, permitindo que a interface web acesse históricos, registros e outros dados relevantes de forma segura e organizada.
+
+
+📦 Bibliotecas Utilizadas
+
+    Biblioteca	Versão	
+        Função no Projeto
+
+    cors	^2.8.5	
+        Middleware para habilitar requisições entre diferentes origens (CORS). Necessário para permitir que o frontend (React) se comunique com a API no navegador.
+    dotenv	^16.4.7	
+        Permite carregar variáveis de ambiente de um arquivo .env. Usado para armazenar informações sensíveis como credenciais do banco de dados.
+    express	^4.21.2	
+        Framework web leve e rápido. É o núcleo da API, define as rotas HTTP, trata requisições e respostas.
+    mysql2	^3.12.0	
+        Driver para conectar e interagir com o banco de dados MySQL. Utilizado para salvar e buscar os dados recebidos do ESP32, como BPM, SpO₂ e temperatura.
+
+
+
+
+📡 Parte Broker MQTT (aedes)
+    Essa é a ponte principal entre o dispositivo ESP32 e o restante do sistema. O broker MQTT recebe as mensagens publicadas pelo ESP (com dados de temperatura, batimentos cardíacos e oxigenação), e:
+
+    Armazena essas informações diretamente no banco de dados (MySQL),
+
+    Permite que o frontend (web) se conecte via WebSocket MQTT e receba os dados em tempo real.
+
+    Tudo isso é feito de forma leve, eficiente e sem depender de serviços externos.
+
+
+📦 Bibliotecas Utilizadas
+
+    Biblioteca	Versão	
+        Função no Projeto
+
+    aedes	^0.51.3	
+        Broker MQTT leve e embutido em Node.js. É o núcleo desta parte, recebendo os dados do ESP32 (como BPM, temperatura e SpO₂) via MQTT.
+    dotenv	^16.4.7	
+        Lê variáveis de ambiente como porta, host do banco, usuário, senha, etc., protegendo informações sensíveis.
+    http	^0.0.1-security	
+        Usado para criar um servidor HTTP que serve como base para a conexão WebSocket MQTT. Ele não é usado para criar rotas HTTP tradicionais (como em uma API), mas sim para abrir uma porta e permitir que o broker MQTT aceite conexões via WebSocket, como as que o frontend faz.
+    mysql2	^3.12.0	
+        Usado para gravar os dados recebidos do ESP diretamente no banco de dados. Cada mensagem recebida pelo aedes é salva no MySQL.
+    net	^1.0.2	
+        Cria o servidor TCP puro necessário para aceitar conexões MQTT padrão (sem WebSocket), como as feitas pelo ESP32.
+    ws	^8.18.1	
+        Suporte a WebSocket. Permite que o frontend (feito em React) se conecte diretamente ao broker para receber dados em tempo real.
