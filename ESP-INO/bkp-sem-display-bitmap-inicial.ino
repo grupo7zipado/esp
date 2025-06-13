@@ -424,24 +424,24 @@ void initSensors() {
 
   QUEM FEZ COMENTA AI RESUMO DOQUE FAZ 
 */
-void drawHeart(float scale) {
-  int centerX = 8;
-  int centerY = 8;
+// void drawHeart(float scale) {
+//   int centerX = 8;
+//   int centerY = 8;
 
-  for (int y = 0; y < 16; y++) {
-    for (int x = 0; x < 16; x++) {
-      if (pgm_read_byte(&epd_bitmap_coracao[y * 2 + (x / 8)]) & (1 << (7 - (x % 8)))) {
-        int dx = x - centerX;
-        int dy = y - centerY;
-        int sx = centerX + dx * scale;
-        int sy = centerY + dy * scale;
-        if (sx >= 0 && sx < 128 && sy >= 0 && sy < 64) {
-          display.drawPixel(sx, sy, WHITE);
-        }
-      }
-    }
-  }
-}
+//   for (int y = 0; y < 16; y++) {
+//     for (int x = 0; x < 16; x++) {
+//       if (pgm_read_byte(&epd_bitmap_coracao[y * 2 + (x / 8)]) & (1 << (7 - (x % 8)))) {
+//         int dx = x - centerX;
+//         int dy = y - centerY;
+//         int sx = centerX + dx * scale;
+//         int sy = centerY + dy * scale;
+//         if (sx >= 0 && sx < 128 && sy >= 0 && sy < 64) {
+//           display.drawPixel(sx, sy, WHITE);
+//         }
+//       }
+//     }
+//   }
+// }
 
 /*
   // -----[getHoraAtual]----- //
