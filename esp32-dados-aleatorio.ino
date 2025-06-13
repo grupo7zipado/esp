@@ -149,7 +149,9 @@ void loop() {
     			std::string valor;
 			
     			if (strcmp(tipos[i], "temperatura") == 0) {
-        			valor = std::to_string(random(330, 370));
+              float valorFloat = random(330, 370)/10.0;
+              String valorString = String(valorFloat, 2);  
+        			valor = valorString.c_str(); 
     			} else if (strcmp(tipos[i], "oxigenacao") == 0) {
         			valor = std::to_string(random(90, 100));
     			} else if (strcmp(tipos[i], "bpm") == 0) {
