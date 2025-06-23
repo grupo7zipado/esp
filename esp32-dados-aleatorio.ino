@@ -13,9 +13,9 @@ const char* password = "46179951";
 // const char* ssid = "777zip";
 // const char* password = "R125redes";
 // Definições do Broker MQTT
-// const char* mqtt_broker = "192.168.1.105";  // Ou IP do seu broker local
+const char* mqtt_broker = "192.168.1.103";  // Ou IP do seu broker local
 // const char* mqtt_broker = "10.67.23.44";  // Ou IP do seu broker local
-const char* mqtt_broker = "7life.kinghost.net";  // Ou IP do seu broker local
+//const char* mqtt_broker = "7life.kinghost.net";  // Ou IP do seu broker local
 const int mqtt_port = 21000;
 
 

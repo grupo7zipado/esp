@@ -60,8 +60,6 @@ Essa é a camada de aplicação responsável por fornecer uma interface REST par
 | `dotenv`      | ^16.4.7    | Carrega variáveis de ambiente do `.env`, como credenciais do banco. |
 | `express`     | ^4.21.2    | Framework web. Define rotas, trata requisições e respostas da API. |
 | `mysql2`      | ^3.12.0    | Driver para conectar ao banco MySQL. Armazena e consulta dados dos sinais vitais. |
-| `fs`          | ^0.0.1-security | Utilizado para manipulação de arquivos locais, se necessário (ex: salvar logs). |
-| `multer`      | ^1.4.5-lts.1 | Middleware para upload de arquivos, caso necessário no projeto (ex: exportar relatórios). |
 
 ---
 
